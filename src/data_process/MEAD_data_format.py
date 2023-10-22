@@ -14,8 +14,51 @@ import glob
 import pickle
 import numpy as np
 import zlib
+from multiprocessing import Pool
+import os
+
+import logging
+
+
+def logger_config(log_path,logging_name):
+    '''
+    配置log
+    :param log_path: 输出log路径
+    :param logging_name: 记录中name，可随意
+    :return:
+    '''
+    '''
+    logger是日志对象，handler是流处理器，console是控制台输出（没有console也可以，将不会在控制台输出，会在日志文件中输出）
+    '''
+    # 获取logger对象,取名
+    logger = logging.getLogger(logging_name)
+    # 输出DEBUG及以上级别的信息，针对所有输出的第一层过滤
+    logger.setLevel(level=logging.DEBUG)
+    # 获取文件日志句柄并设置日志级别，第二层过滤
+    handler = logging.FileHandler(log_path, encoding='UTF-8')
+    handler.setLevel(logging.INFO)
+    # 生成并设置文件日志格式
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    # console相当于控制台输出，handler文件输出。获取流句柄并设置日志级别，第二层过滤
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    # 为logger对象添加句柄
+    logger.addHandler(handler)
+    logger.addHandler(console)
+    return logger
+
+logger = logger_config(log_path='data_process.log', logging_name='data process log')
+
 
 def format_data(dir_name):
+    # 先调用两个方法，获得video和audio的数据
+    global logger
+    logger.info('进程{}处理文件夹{}的内容'.format(os.getpid(),dir_name))
+    process_video(dir_name)
+    process_audio(dir_name)
+
+    # 整理数据
     filenames = glob.glob(f'{dir_name}/*.mp4')
     info={}
     for video_path in filenames:
@@ -51,10 +94,11 @@ def format_data(dir_name):
         # a=zlib.decompress(a)
         # a= pickle.loads(a)
 
-
         # 完了之后，删除没有必要的数据
         os.remove(video_path.replace('.mp4','_video.pkl'))
         os.remove(video_path.replace('.mp4','_audio.pkl'))
+    
+    logger.info('已结束：进程{}任务处理文件夹{}的内容'.format(os.getpid(),dir_name))
 
 if __name__=='__main__':
     # 希望各个方法能够做到：输入视频路径，输出pickl的pkl文件
@@ -65,9 +109,12 @@ if __name__=='__main__':
         config.update(yaml.safe_load(f))
 
     dataset_root=config['mead_root_path']
-    dir_list=glob.glob(f'{dataset_root}/*/video/*/*/*')
+    dir_list=glob.glob(f'{dataset_root}/*/video/*/*/*')    
+    dir_list=['data']
     
-    for dir_name in dir_list:
-        process_video(dir_name,config)
-        process_audio(dir_name)
-        format_data(dir_name)
+    workers=1
+    pool = Pool(workers)
+    for _ in pool.imap_unordered(format_data,dir_list):
+        None
+    pool.close()
+    

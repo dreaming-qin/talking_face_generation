@@ -26,14 +26,14 @@ from scipy.io import loadmat
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('./checkpoint/shape_predictor_68_face_landmarks.dat')
 
-def process_video(video_dir,config):
+def process_video(video_dir):
     r'''输入视频目录，处理该目录下所有mp4的视频，生成的信与视频目录放在一块'''
 
     # 获得transformer video
     filenames = glob.glob(f'{video_dir}/*.mp4')
     for video_path in filenames:
         info={}
-        process_video=transformer_video(video_path,config)
+        process_video=transformer_video(video_path)
         info['transformer_video']=np.array(process_video,dtype=np.uint8)
         with open(video_path.replace('.mp4','_temp1.pkl'),'wb') as f:
             pickle.dump(info,f)
@@ -61,7 +61,7 @@ def process_video(video_dir,config):
     return
 
 
-def transformer_video(video_path,config):
+def transformer_video(video_path):
     '''对视频进行预处理，返回transformer后的numpy数组
     只能对一个视频处理的方法
     '''
@@ -74,10 +74,10 @@ def transformer_video(video_path,config):
     reader.close()
 
     driving_video = [resize(frame, (256, 256))[..., :3] for frame in driving_video]
-    process_video = get_aligned_image(driving_video,config)
+    process_video = get_aligned_image(driving_video)
     # process_video = get_transformed_image(process_video,config)
     process_video=np.array(np.array(process_video)*255, dtype=np.uint8)
-    imageio.mimsave('test.mp4',process_video)
+    # imageio.mimsave('test.mp4',process_video)
 
     return process_video
 
@@ -92,7 +92,7 @@ def video_to_3DMM_and_pose(video_dir):
     get3DMM(video_dir,video_dir)
 
 
-def get_aligned_image(driving_video,config):
+def get_aligned_image(driving_video):
     aligned_array = []
     video_array = np.array(np.array(driving_video)* 255, dtype=np.uint8)
     detect_face=[]
@@ -121,10 +121,10 @@ def get_aligned_image(driving_video,config):
     bottom=max(template[56][1],template[57][1])
     left=template[48][0]
     right=template[54][0]
-    config['augmentation_params']['crop_mouth_param']['center_x']=(left+right)//2
-    config['augmentation_params']['crop_mouth_param']['center_y']=(top+bottom)//2+10
-    config['augmentation_params']['crop_mouth_param']['mask_width']=right-left+10
-    config['augmentation_params']['crop_mouth_param']['mask_height']=bottom-top+25
+    # config['augmentation_params']['crop_mouth_param']['center_x']=(left+right)//2
+    # config['augmentation_params']['crop_mouth_param']['center_y']=(top+bottom)//2+10
+    # config['augmentation_params']['crop_mouth_param']['mask_width']=right-left+10
+    # config['augmentation_params']['crop_mouth_param']['mask_height']=bottom-top+25
     
     
     # 根据参照物图片，将进行align

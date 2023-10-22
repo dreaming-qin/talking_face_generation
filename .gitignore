@@ -25,7 +25,9 @@ TestResults.xml
 # 我的
 Deep3DFaceRecon_pytorch/
 BFM/
-*.pyc
 checkpoint/
 result/
 data/
+
+*.log
+*.pyc
