@@ -1,0 +1,19 @@
+augmentation_params:
+  crop_mouth_param: 
+    center_x: 190
+    center_y: 190
+    mask_width: 100
+    mask_height: 60
+  rotation_param: 
+    degrees: 30
+  perspective_param: 
+    pers_num: 30
+    enlarge_num: 40
+  flip_param:
+    horizontal_flip: True
+    time_flip: False
+  jitter_param:
+    brightness: 0
+    contrast: 0
+    saturation: 0
+    hue: 0

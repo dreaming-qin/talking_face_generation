@@ -20,3 +20,12 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+
+
+# 我的
+Deep3DFaceRecon_pytorch/
+BFM/
+*.pyc
+checkpoint/
+result/
+data/
