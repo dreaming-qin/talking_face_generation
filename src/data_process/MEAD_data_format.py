@@ -66,6 +66,7 @@ if __name__=='__main__':
 
     dataset_root=config['mead_root_path']
     dir_list=glob.glob(f'{dataset_root}/*/video/*/*/*')
+    
     for dir_name in dir_list:
         process_video(dir_name,config)
         process_audio(dir_name)

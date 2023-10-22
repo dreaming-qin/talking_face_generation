@@ -29,16 +29,19 @@ def process_audio(video_dir):
         my_audio_clip = AudioFileClip(video_file)
         # 16kHz对应25帧的换算方式
         my_audio_clip.write_audiofile(audio_file,fps=int(fps/25*16000))
+
+        # 获取音频信息
         mfcc=process_train_audio(audio_file)
         hugebert=process_syncNet_audio(audio_file)
         
-        info={}
         # 写入数据
+        info={}
         info['input_audio_mfcc']=mfcc
         info['syncNet_audio']=hugebert
         with open(video_file.replace('.mp4','_audio.pkl'),'wb') as f:
             info =  pickle.dumps(info)
             f.write(info)
+
         # 删除不必要的数据
         os.remove(audio_file)
     return

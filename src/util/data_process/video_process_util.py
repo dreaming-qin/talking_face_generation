@@ -33,10 +33,7 @@ def process_video(video_dir,config):
     filenames = glob.glob(f'{video_dir}/*.mp4')
     for video_path in filenames:
         info={}
-        import time
-        start=time.time()
         process_video=transformer_video(video_path,config)
-        print(time.time()-start)
         info['transformer_video']=np.array(process_video,dtype=np.uint8)
         with open(video_path.replace('.mp4','_temp1.pkl'),'wb') as f:
             pickle.dump(info,f)
@@ -77,12 +74,12 @@ def transformer_video(video_path,config):
     reader.close()
 
     driving_video = [resize(frame, (256, 256))[..., :3] for frame in driving_video]
-    driving_video = get_aligned_image(driving_video,config)
-    # transformed_video = get_transformed_image(driving_video,config)
-    transformed_video=driving_video
-    transformed_video=np.array(np.array(transformed_video)*255, dtype=np.uint8)
+    process_video = get_aligned_image(driving_video,config)
+    # process_video = get_transformed_image(process_video,config)
+    process_video=np.array(np.array(process_video)*255, dtype=np.uint8)
+    imageio.mimsave('test.mp4',process_video)
 
-    return transformed_video
+    return process_video
 
 
 def video_to_3DMM_and_pose(video_dir):
@@ -97,13 +94,17 @@ def video_to_3DMM_and_pose(video_dir):
 
 def get_aligned_image(driving_video,config):
     aligned_array = []
-    video_array = np.array(driving_video)
-
+    video_array = np.array(np.array(driving_video)* 255, dtype=np.uint8)
     detect_face=[]
+    gray_list=[]
     first_index=1e10
+    # 初始化gray list
     for i in range(len(video_array)):
-        image=np.array(video_array[i] * 255, dtype=np.uint8)
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(video_array[i], cv2.COLOR_BGR2GRAY)
+        gray_list.append(gray)
+
+    for i in range(len(video_array)):
+        gray = gray_list[i]
         rects = detector(gray, 1)  #detect human face
         detect_face.append(rects)
         if len(rects)!=0:
@@ -113,7 +114,7 @@ def get_aligned_image(driving_video,config):
 
 
     # 获得参照物图片信息
-    template = predictor(gray, detect_face[first_index][-1]) #detect 68 points
+    template = predictor(gray_list[first_index], detect_face[first_index][-1]) #detect 68 points
     template = shape_to_np(template)
     # 在这里，将会更新config里的面部遮罩坐标，精心调制版本
     top=min(template[50][1],template[52][1])
@@ -127,22 +128,21 @@ def get_aligned_image(driving_video,config):
     
     
     # 根据参照物图片，将进行align
-    def align(rects):
+    for i,rects in enumerate(detect_face):
         dst=np.zeros((256,256,3))
         if len(rects)!=0:
-            shape = predictor(gray, rects[-1]) #detect 68 points
+            shape = predictor(gray_list[i], rects[-1]) #detect 68 points
             shape = shape_to_np(shape)
             pts2 = np.float32(template[:35,:])
             pts1 = np.float32(shape[:35,:]) #eye and nose
 
             tform = tf.SimilarityTransform()
             tform.estimate( pts2, pts1) #Set the transformation matrix with the explicit parameters.
-            dst = tf.warp(image, tform, output_shape=(256, 256))
+            dst = tf.warp(video_array[i], tform, output_shape=(256, 256))
 
             dst = np.array(dst, dtype=np.float32)
-            aligned_array.append(dst)
-        return dst
-    aligned_array=[align(rects) for rects in detect_face ]
+        aligned_array.append(dst)
+
 
     return aligned_array
 
