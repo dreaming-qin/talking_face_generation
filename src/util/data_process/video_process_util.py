@@ -77,7 +77,7 @@ def transformer_video(video_path):
     process_video = get_aligned_image(driving_video)
     # process_video = get_transformed_image(process_video,config)
     process_video=np.array(np.array(process_video)*255, dtype=np.uint8)
-    # imageio.mimsave('test.mp4',process_video)
+    imageio.mimsave('test.mp4',process_video)
 
     return process_video
 

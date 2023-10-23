@@ -60,8 +60,8 @@ def format_data(dir_name):
 
     # 整理数据
     filenames = glob.glob(f'{dir_name}/*.mp4')
-    info={}
     for video_path in filenames:
+        info={}
         # 先处理视频的数据
         with open(video_path.replace('.mp4','_video.pkl'),'rb') as f:
             temp = pickle.load(f)
@@ -109,15 +109,15 @@ if __name__=='__main__':
         config.update(yaml.safe_load(f))
 
     dataset_root=config['mead_root_path']
-    dir_list=glob.glob(f'{dataset_root}/*/video/*/*/*')
+    dir_list=glob.glob(f'{dataset_root}/*/video/front/*/*')
+
+    # dir_list=['data']
+    # for file_list in dir_list:
+    #     format_data(file_list)
     
-    dir_list=['data']
-    for file_list in dir_list:
-        format_data(file_list)
-    
-    # workers=5
-    # pool = Pool(workers)
-    # for _ in pool.imap_unordered(format_data,dir_list):
-    #     None
-    # pool.close()
+    workers=5
+    pool = Pool(workers)
+    for _ in pool.imap_unordered(format_data,dir_list):
+        None
+    pool.close()
     
