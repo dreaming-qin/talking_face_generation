@@ -26,7 +26,7 @@ from scipy.io import loadmat
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('./checkpoint/shape_predictor_68_face_landmarks.dat')
 
-def process_video(video_dir):
+def process_video(video_dir,process_3DMM):
     r'''输入视频目录，处理该目录下所有mp4的视频，生成的信与视频目录放在一块'''
 
     # 获得transformer video
@@ -39,7 +39,8 @@ def process_video(video_dir):
             pickle.dump(info,f)
 
     # 获得3DMM信息
-    video_to_3DMM_and_pose(video_dir)
+    if process_3DMM:
+        video_to_3DMM_and_pose(video_dir)
 
     # 获得所有信息后，开始合并所需要的信息
     filenames = glob.glob(f'{video_dir}/*.mp4')
@@ -77,7 +78,7 @@ def transformer_video(video_path):
     process_video = get_aligned_image(driving_video)
     # process_video = get_transformed_image(process_video,config)
     process_video=np.array(np.array(process_video)*255, dtype=np.uint8)
-    imageio.mimsave('test.mp4',process_video)
+    # imageio.mimsave('test.mp4',process_video)
 
     return process_video
 

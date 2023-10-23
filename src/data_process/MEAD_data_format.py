@@ -9,12 +9,12 @@ if __name__=='__main__':
     sys.path.append(os.path.join(path,'Deep3DFaceRecon_pytorch'))
 
 from src.util.data_process.audio_process_util import process_audio
-from src.util.data_process.video_process_util import process_video
+from src.util.data_process.video_process_util import process_video,video_to_3DMM_and_pose
 import glob
 import pickle
 import numpy as np
 import zlib
-from multiprocessing import Pool
+from torch.multiprocessing import Pool, set_start_method
 import os
 
 import logging
@@ -50,13 +50,23 @@ def logger_config(log_path,logging_name):
 
 logger = logger_config(log_path='data_process.log', logging_name='data process log')
 
-
-def format_data(dir_name):
+def format_data_by_cuda(dir_name):
     # 先调用两个方法，获得video和audio的数据
     global logger
     logger.info('进程{}处理文件夹{}的内容'.format(os.getpid(),dir_name))
-    process_video(dir_name)
+
+    video_to_3DMM_and_pose(dir_name)
     process_audio(dir_name)
+    
+    logger.info('已结束：进程{}任务处理文件夹{}的内容'.format(os.getpid(),dir_name))
+
+
+def format_data_no_use_cuda(dir_name):
+    # 先调用两个方法，获得video和audio的数据
+    global logger
+    logger.info('进程{}处理文件夹{}的内容'.format(os.getpid(),dir_name))
+    process_video(dir_name,process_3DMM=False)
+    # process_audio(dir_name)
 
     # 整理数据
     filenames = glob.glob(f'{dir_name}/*.mp4')
@@ -101,6 +111,7 @@ def format_data(dir_name):
     logger.info('已结束：进程{}任务处理文件夹{}的内容'.format(os.getpid(),dir_name))
 
 if __name__=='__main__':
+    set_start_method('spawn')
     # 希望各个方法能够做到：输入视频路径，输出pickl的pkl文件
     import yaml
     with open(r'config/data_process/common.yaml',encoding='utf8') as f:
@@ -117,7 +128,14 @@ if __name__=='__main__':
     
     workers=5
     pool = Pool(workers)
-    for _ in pool.imap_unordered(format_data,dir_list):
+    for _ in pool.imap_unordered(format_data_by_cuda,dir_list):
+        None
+    pool.close()
+
+    print(logger.info('\n使用cuda获得的数据已处理完毕，现在处理不使用cuda的\n'))
+
+    pool = Pool(workers)
+    for _ in pool.imap_unordered(format_data_no_use_cuda,dir_list):
         None
     pool.close()
     
