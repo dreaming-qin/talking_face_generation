@@ -30,13 +30,13 @@ def process_video(video_dir):
     r'''输入视频目录，处理该目录下所有mp4的视频，生成的信与视频目录放在一块'''
 
     # 获得transformer video
-    # filenames = glob.glob(f'{video_dir}/*.mp4')
-    # for video_path in filenames:
-        # info={}
-        # process_video=transformer_video(video_path)
-        # info['transformer_video']=np.array(process_video,dtype=np.uint8)
-        # with open(video_path.replace('.mp4','_temp1.pkl'),'wb') as f:
-        #     pickle.dump(info,f)
+    filenames = glob.glob(f'{video_dir}/*.mp4')
+    for video_path in filenames:
+        info={}
+        process_video=transformer_video(video_path)
+        info['transformer_video']=np.array(process_video,dtype=np.uint8)
+        with open(video_path.replace('.mp4','_temp1.pkl'),'wb') as f:
+            pickle.dump(info,f)
 
     # 获得3DMM信息
     video_to_3DMM_and_pose(video_dir)
@@ -87,7 +87,7 @@ def video_to_3DMM_and_pose(video_dir):
     对一个文件夹内的所有视频进行操作
     '''
     # keypoints对一个文件夹内的所有视频，以批次方法进行操作
-    # keypoints(video_dir,video_dir)
+    keypoints(video_dir,video_dir)
     # get3DMM对一个文件夹内的所有视频，以批次方法进行操作
     get3DMM(video_dir,video_dir)
 
