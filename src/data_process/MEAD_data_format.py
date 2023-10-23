@@ -103,18 +103,21 @@ def format_data(dir_name):
 if __name__=='__main__':
     # 希望各个方法能够做到：输入视频路径，输出pickl的pkl文件
     import yaml
-    with open(r'config\data_process\common.yaml',encoding='utf8') as f:
+    with open(r'config/data_process/common.yaml',encoding='utf8') as f:
         config=yaml.safe_load(f)
-    with open(r'config\dataset\common.yaml',encoding='utf8') as f:
+    with open(r'config/dataset/common.yaml',encoding='utf8') as f:
         config.update(yaml.safe_load(f))
 
     dataset_root=config['mead_root_path']
-    dir_list=glob.glob(f'{dataset_root}/*/video/*/*/*')    
-    dir_list=['data']
+    dir_list=glob.glob(f'{dataset_root}/*/video/*/*/*')
     
-    workers=1
-    pool = Pool(workers)
-    for _ in pool.imap_unordered(format_data,dir_list):
-        None
-    pool.close()
+    dir_list=['data']
+    for file_list in dir_list:
+        format_data(file_list)
+    
+    # workers=5
+    # pool = Pool(workers)
+    # for _ in pool.imap_unordered(format_data,dir_list):
+    #     None
+    # pool.close()
     
