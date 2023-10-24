@@ -66,7 +66,6 @@ def format_data_no_use_cuda(dir_name):
     global logger
     logger.info('进程{}处理文件夹{}的内容'.format(os.getpid(),dir_name))
     process_video(dir_name,process_3DMM=False)
-    # process_audio(dir_name)
 
     # 整理数据
     filenames = glob.glob(f'{dir_name}/*.mp4')
@@ -118,22 +117,40 @@ if __name__=='__main__':
         config=yaml.safe_load(f)
     with open(r'config/dataset/common.yaml',encoding='utf8') as f:
         config.update(yaml.safe_load(f))
-
     dataset_root=config['mead_root_path']
-    dir_list=glob.glob(f'{dataset_root}/*/video/front/*/*')
-
-    # dir_list=['data']
-    # for file_list in dir_list:
-    #     format_data(file_list)
     
-    workers=5
+
+    # 对于一些不符合规范的视频，删除掉，不然处理会产生问题
+    # unvalid_file=[]
+    # filenames=sorted(glob.glob(f'{dataset_root}/*/video/*/*/*/*.mp4'))
+    # for file in filenames:
+    #     if os.path.getsize(file)==0:
+    #         unvalid_file.append(file)
+    # for file in unvalid_file:
+    #     os.remove(file)
+
+
+    dir_list=sorted(glob.glob(f'{dataset_root}/*/video/front/*/*'))
+    index=0
+    for i,dir in enumerate(dir_list):
+        if '/workspace/dataset/MEAD/W011/video/front/surprised/level_1' in dir:
+            index=i
+            break
+    dir_list=dir_list[i:]
+
+    # test
+    # dir_list=['data','data2','data3','data4','data5']
+    # for file_list in dir_list:
+    #     format_data_by_cuda(file_list)
+    #     format_data_no_use_cuda(file_list)
+    
+    workers=4
     pool = Pool(workers)
     for _ in pool.imap_unordered(format_data_by_cuda,dir_list):
         None
     pool.close()
-
     print(logger.info('\n使用cuda获得的数据已处理完毕，现在处理不使用cuda的\n'))
-
+    workers=5
     pool = Pool(workers)
     for _ in pool.imap_unordered(format_data_no_use_cuda,dir_list):
         None
