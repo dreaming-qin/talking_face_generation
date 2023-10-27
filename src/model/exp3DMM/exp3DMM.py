@@ -28,7 +28,7 @@ class Exp3DMM(nn.Module):
         self.audio_encoder=AudioEncoder()
         self.video_encoder=VideoEncoder(**cfg['video_encoder'])
         self.fusion_module=Fusion(**cfg['fusion'])
-        self.win_size=config['win_size']
+        self.win_size=cfg['win_size']
 
     def forward(self, transformer_video, audio_MFCC):
         """transformer_video输入维度[b,len,3,H,W]

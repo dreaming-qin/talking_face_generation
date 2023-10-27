@@ -22,10 +22,14 @@ video_encoder:
   # 改变这个可以改变图片的输入尺寸
   scale_factor: 1
 
-loss:
-  mouth_weight: [1,1]
-  exp_weight: [1,1]
+mouth_weight: [1,1]
+exp_weight: [1,1]
 
 win_size: 5
-device: 0
+device: "cuda:0"
+checkpoint_dir: "checkpoint/exp3DMM"
+result_dir: "result/exp3DMM"
 
+epoch: 3
+lr: 0.001
+lr_scheduler_step: 2

@@ -28,10 +28,11 @@ predictor = dlib.shape_predictor('./checkpoint/shape_predictor_68_face_landmarks
 class Exp3DMMdataset(torch.utils.data.Dataset):
     r'''用于训练EXP 3DMM提取模块的数据集，需要获得输入，以及LOSS函数需要的输入'''
 
-    def __init__(self,config):
+    def __init__(self,config,type='train',max_len=None):
         format_path=config['format_output_path']
-        self.filenames=sorted(glob.glob(f'{format_path}/*/*.pkl'))
+        self.filenames=sorted(glob.glob(f'{format_path}/{type}/*/*.pkl'))
         self.transformed_video_args=config['augmentation_params']
+        self.max_len=max_len
 
     def __len__(self):
         return len(self.filenames)
@@ -46,7 +47,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         data= pickle.loads(byte_file)
         out={}
         # 下列的self.process方法中，需要根据frame_index拿出合法数据
-        video_data,data['frame_index']=self.process_video(data,max_len=70)
+        video_data,data['frame_index']=self.process_video(data,self.max_len)
         out['video_input']=torch.tensor(video_data).float()
         audio_data=self.process_audio(data)
         out['audio_input']=torch.tensor(audio_data[0]).float()
@@ -57,14 +58,15 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
 
         return out
 
-    def process_video(self,data,max_len=70):
+    def process_video(self,data,max_len=None):
         video_data=data['align_video']
         frame_index=data['frame_index']
         # 当超出长度限制时，需要截断
-        if video_data.shape[0]>max_len:
-            temp_index=random.sample(frame_index.tolist(),max_len)
+        if  (max_len is not None) and (video_data.shape[0]>max_len):
+            temp_index=sorted(random.sample(range(1,frame_index.shape[0]),max_len-1))
+            temp_index=[0]+temp_index
             video_data=video_data[temp_index]
-            frame_index=sorted(temp_index)
+            frame_index=frame_index[temp_index]
 
         # 获得参照物图片（也就是第一张图片）的信息
         template_video_array = video_data[0]
@@ -162,7 +164,7 @@ if __name__=='__main__':
         with open(a,'r',encoding='utf8') as f:
             config.update(yaml.safe_load(f))
        
-    dataset=Exp3DMMdataset(config)
+    dataset=Exp3DMMdataset(config,type='train',max_len=10)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=3, 

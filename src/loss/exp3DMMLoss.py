@@ -24,8 +24,8 @@ class Exp3DMMLoss(nn.Module):
     def __init__(self, config,device):
         super(Exp3DMMLoss, self).__init__()
         self.device=device
-        self.mouth_weight=config['loss']['mouth_weight']
-        self.exp_weight=config['loss']['exp_weight']
+        self.mouth_weight=config['mouth_weight']
+        self.exp_weight=config['exp_weight']
 
         # loss函数
         self.syncNet=LandmarkHubertSyncNet()

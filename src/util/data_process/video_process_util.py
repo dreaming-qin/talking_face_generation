@@ -109,8 +109,6 @@ def get_aligned_image(driving_video):
         rects = detector(gray, 1)  #detect human face
         detect_face.append(rects)
         if len(rects)!=0:
-            template = predictor(gray, rects[-1]) #detect 68 points
-            template = shape_to_np(template)
             first_index=min(first_index,i)
 
     if first_index==10000:
