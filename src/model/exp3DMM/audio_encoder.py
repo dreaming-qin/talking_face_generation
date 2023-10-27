@@ -24,6 +24,8 @@ class AudioEncoder(nn.Module):
 
 
     def forward(self,audio):
+        '''audio输入维度[B,len,28,mfcc dim]
+        输出维度[B,len,1024]'''
         audio_feature = []
         for step_t in range(audio.size(1)):
             current_audio = audio[ : ,step_t , :, :].unsqueeze(1)

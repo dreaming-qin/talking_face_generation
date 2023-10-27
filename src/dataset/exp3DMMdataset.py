@@ -5,6 +5,8 @@ import torch
 import numpy as np
 import dlib
 import cv2
+from torch.nn.utils.rnn import pad_sequence
+
 
 # 测试代码
 if __name__=='__main__':
@@ -43,12 +45,12 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         out={}
         # 下列的self.process方法中，需要根据frame_index拿出合法数据
         audio_data=self.process_audio(data)
-        out['audio_input']=torch.tensor(audio_data[0])
-        out['audio_hubert']=torch.tensor(audio_data[1])
-        out['video_input']=torch.tensor(self.process_video(data))
+        out['audio_input']=torch.tensor(audio_data[0]).float()
+        out['audio_hubert']=torch.tensor(audio_data[1]).float()
+        out['video_input']=torch.tensor(self.process_video(data)).float()
         data_3DMM=self.process_3DMM(data)
-        out['exp_3DMM']=torch.tensor(data_3DMM[0])
-        out['id_3DMM']=torch.tensor(data_3DMM[1])
+        out['exp_3DMM']=torch.tensor(data_3DMM[0]).float()
+        out['id_3DMM']=torch.tensor(data_3DMM[1]).float()
 
         return out
 
@@ -116,6 +118,29 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
 
         return np.array(exp_3DMM),np.array(id_3DMM)
 
+    def collater(self, samples):
+        # 对齐数据
+        audio_input = [s['audio_input'] for s in samples]
+        audio_hubert = [s['audio_hubert'] for s in samples]
+        video_input = [s['video_input'] for s in samples]
+        exp_3DMM = [s['exp_3DMM'] for s in samples]
+        id_3DMM = [s['id_3DMM'] for s in samples]
+
+        audio_input=pad_sequence(audio_input,batch_first =True)
+        audio_hubert=pad_sequence(audio_hubert,batch_first =True)
+        video_input=pad_sequence(video_input,batch_first =True)
+        exp_3DMM=pad_sequence(exp_3DMM,batch_first =True)
+        id_3DMM=pad_sequence(id_3DMM,batch_first =True)
+
+        data={}
+        data.update({
+            'audio_input': audio_input,
+            'audio_hubert': audio_hubert,
+            'video_input': video_input,
+            'exp_3DMM': exp_3DMM,
+            'id_3DMM': id_3DMM
+        })
+        return data
 
 # 测试代码
 if __name__=='__main__':
@@ -134,9 +159,14 @@ if __name__=='__main__':
         batch_size=3, 
         shuffle=True,
         drop_last=False,
-        num_workers=2,
+        num_workers=0,
+        collate_fn=dataset.collater
     )     
     for data in dataloader:
         for key,value in data.items():
-            print('{}形状为{}'.format(key,value.shape))
-        a=1
+            if 'audio_hubert' in key:
+                value=value[:,:,0,:60]
+                mask=value>1e-6
+                mask=mask.sum(dim=-1)>1e-6
+                y_len = mask.sum(dim=-1)
+                print('{}形状为{}'.format(key,value.shape))

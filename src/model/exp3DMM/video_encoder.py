@@ -50,6 +50,8 @@ class VideoEncoder(nn.Module):
 
 
     def forward(self, x): #torch.Size([4, 3, H, W])
+        r'''video输入维度[B,3,H,W]
+        输出维度[B,512]'''
         if self.scale_factor != 1:
             x = self.down(x) # 0.25 [4, 3, H/4, W/4]
 

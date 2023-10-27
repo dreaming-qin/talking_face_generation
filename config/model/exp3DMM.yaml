@@ -21,3 +21,12 @@ video_encoder:
   num_blocks: 5
   # 改变这个可以改变图片的输入尺寸
   scale_factor: 1
+
+loss:
+  mouth_weight: [1,1]
+  exp_weight: [1,1]
+
+win_size: 11
+
+train_args:
+  device: 0

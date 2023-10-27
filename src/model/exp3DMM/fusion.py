@@ -81,13 +81,12 @@ class Fusion(nn.Module):
 
     def forward(self, content, style_code):
         """
-
         Args:
-            content (_type_): (B, num_frames, window, C_dmodel)
-            style_code (_type_): (B, C_dmodel)
-
+            content : (B, len, window, audio dim)
+            style_code : (B, len, window, video dim)
+            其中window设置为11
         Returns:
-            face3d: (B, L_clip, C_3dmm)
+            face3d: (B, len, 3dmm dim)
         """
         B, N, W, C = content.shape
         style = style_code.reshape(B, 1, 1, C).expand(B, N, W, C)
