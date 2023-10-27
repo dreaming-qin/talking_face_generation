@@ -6,6 +6,7 @@ import numpy as np
 import dlib
 import cv2
 from torch.nn.utils.rnn import pad_sequence
+import random
 
 
 # 测试代码
@@ -36,6 +37,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         return len(self.filenames)
 
     def __getitem__(self, idx):
+        r'''由于gpu大小问题，只能将帧长度设置为70，在这里进行更改'''
         file=self.filenames[idx]
         # 解压pkl文件
         with open(file,'rb') as f:
@@ -44,18 +46,25 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         data= pickle.loads(byte_file)
         out={}
         # 下列的self.process方法中，需要根据frame_index拿出合法数据
+        video_data,data['frame_index']=self.process_video(data,max_len=70)
+        out['video_input']=torch.tensor(video_data).float()
         audio_data=self.process_audio(data)
         out['audio_input']=torch.tensor(audio_data[0]).float()
         out['audio_hubert']=torch.tensor(audio_data[1]).float()
-        out['video_input']=torch.tensor(self.process_video(data)).float()
         data_3DMM=self.process_3DMM(data)
         out['exp_3DMM']=torch.tensor(data_3DMM[0]).float()
         out['id_3DMM']=torch.tensor(data_3DMM[1]).float()
 
         return out
 
-    def process_video(self,data):
+    def process_video(self,data,max_len=70):
         video_data=data['align_video']
+        frame_index=data['frame_index']
+        # 当超出长度限制时，需要截断
+        if video_data.shape[0]>max_len:
+            temp_index=random.sample(frame_index.tolist(),max_len)
+            video_data=video_data[temp_index]
+            frame_index=sorted(temp_index)
 
         # 获得参照物图片（也就是第一张图片）的信息
         template_video_array = video_data[0]
@@ -75,7 +84,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
 
         # 更新transformer参数后，开始transformer video
         input_video=self.transformed_video(video_data/255)
-        return input_video
+        return input_video,frame_index
 
     def transformed_video(self,driving_video):
         video_array = np.array(driving_video)
@@ -164,9 +173,4 @@ if __name__=='__main__':
     )     
     for data in dataloader:
         for key,value in data.items():
-            if 'audio_hubert' in key:
-                value=value[:,:,0,:60]
-                mask=value>1e-6
-                mask=mask.sum(dim=-1)>1e-6
-                y_len = mask.sum(dim=-1)
-                print('{}形状为{}'.format(key,value.shape))
+            print('{}形状为{}'.format(key,value.shape))
