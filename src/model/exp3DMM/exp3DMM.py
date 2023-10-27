@@ -43,7 +43,7 @@ class Exp3DMM(nn.Module):
             frame_feature=self.video_encoder(transformer_video[:,i])
             video_feature.append(frame_feature)
         # [B,Len,video dim]
-        video_feature=torch.stack(video_feature)
+        video_feature=torch.stack(video_feature,dim=1)
         # [B,len,win_size,audio dim]
         audio_feature=get_window(audio_feature,self.win_size)
         # [B,len,win_size,video dim]
@@ -66,7 +66,7 @@ if __name__=='__main__':
     dataset=Exp3DMMdataset(config)
     dataloader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=3, 
+        batch_size=2, 
         shuffle=True,
         drop_last=False,
         num_workers=0,
@@ -75,10 +75,11 @@ if __name__=='__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model=Exp3DMM(config)
     model=model.to(device)
-    for data in dataloader:
-        for key,value in data.items():
-            data[key]=value.to(device)
-        aaa=data['video_input']
-        transformer_video=aaa.permute(0,1,4,2,3)
-        result=model(transformer_video,data['audio_input'])
-        a=1
+    with torch.no_grad():
+        for data in dataloader:
+            for key,value in data.items():
+                data[key]=value.to(device)
+            aaa=data['video_input']
+            transformer_video=aaa.permute(0,1,4,2,3)
+            result=model(transformer_video,data['audio_input'])
+            a=1

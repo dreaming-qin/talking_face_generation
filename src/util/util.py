@@ -1,29 +1,31 @@
 import torch
-
+import numpy as np
 
 def get_window(feature, win_size):
     """
 
     Args:
-        feature (torch.tensor): (B,Len,video dim)
+        feature (torch.tensor): (B,Len,feature dim)
 
     Returns:
-        feature_wins (torch.tensor): (B,Len,win_size,video dim)
+        feature_wins (torch.tensor): (B,Len,win_size,feature dim)
     """
-    num_frames = len(feature)
-    ph_frames = []
-    for rid in range(0, num_frames):
-        ph = []
-        for i in range(rid - win_size, rid + win_size + 1):
-            if i < 0:
-                ph.append(31)
-            elif i >= num_frames:
-                ph.append(31)
-            else:
-                ph.append(feature[i])
-
-        ph_frames.append(ph)
-
-    feature_wins =torch.Tensor(ph_frames)
-    feature_wins=feature_wins.permute(0,1,3,2)
-    return feature_wins
+    B,L,_ = feature.shape
+    ans=[]
+    for batch in range(B):
+        batch_ans=[]
+        for num in range(L):
+            num_ans=[]
+            for i in range(num - win_size, num + win_size + 1):
+                if i < 0:
+                    num_ans.append(feature[batch,0])
+                elif i >= num:
+                    num_ans.append(feature[batch,-1])
+                else:
+                    num_ans.append(feature[batch,i])
+            num_ans=torch.stack(num_ans)
+            batch_ans.append(num_ans)
+        batch_ans=torch.stack(batch_ans)
+        ans.append(batch_ans)
+    ans=torch.stack(ans)
+    return ans

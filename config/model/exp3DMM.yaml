@@ -26,7 +26,6 @@ loss:
   mouth_weight: [1,1]
   exp_weight: [1,1]
 
-win_size: 11
+win_size: 5
+device: 0
 
-train_args:
-  device: 0

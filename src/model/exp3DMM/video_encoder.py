@@ -27,7 +27,7 @@ class VideoEncoder(nn.Module):
         self.layer1 = self._make_layer(BasicBlock, 64, layers[0])
         self.layer2 = self._make_layer(BasicBlock, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(BasicBlock, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(BasicBlock, 512, layers[3], stride=2)
+        self.layer4 = self._make_layer(BasicBlock, 256, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d(1)
 
 

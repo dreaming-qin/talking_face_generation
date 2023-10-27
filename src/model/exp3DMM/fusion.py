@@ -89,8 +89,7 @@ class Fusion(nn.Module):
             face3d: (B, len, 3dmm dim)
         """
         B, N, W, C = content.shape
-        style = style_code.reshape(B, 1, 1, C).expand(B, N, W, C)
-        style = style.permute(2, 0, 1, 3).reshape(W, B * N, C)
+        style = style_code.permute(2, 0, 1, 3).reshape(W, B * N, C)
         # (W, B*N, C)
 
         content = content.permute(2, 0, 1, 3).reshape(W, B * N, C)
