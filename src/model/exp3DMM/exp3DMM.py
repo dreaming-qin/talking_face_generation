@@ -75,10 +75,11 @@ if __name__=='__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model=Exp3DMM(config)
     model=model.to(device)
-    for data in dataloader:
-        for key,value in data.items():
-            data[key]=value.to(device)
-        aaa=data['video_input']
-        transformer_video=aaa.permute(0,1,4,2,3)
-        result=model(transformer_video,data['audio_input'])
-        a=1
+    with torch.no_grad():
+        for data in dataloader:
+            for key,value in data.items():
+                data[key]=value.to(device)
+            aaa=data['video_input']
+            transformer_video=aaa.permute(0,1,4,2,3)
+            result=model(transformer_video,data['audio_input'])
+            a=1

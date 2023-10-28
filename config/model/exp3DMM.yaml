@@ -7,7 +7,7 @@ fusion:
   activation: 'relu'
   normalize_before: False
   return_intermediate_dec: False
-  pos_embed_len: 11
+  pos_embed_len: 1
   upper_face3d_indices: [6, 8, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63]
   lower_face3d_indices: [0,1,2,3,4,5,7,9,10,11,12,13,14]
   dynamic_K: 8
@@ -25,7 +25,7 @@ video_encoder:
 mouth_weight: [1,1]
 exp_weight: [1,1]
 
-win_size: 5
+win_size: 0
 device: "cuda:0"
 checkpoint_dir: "checkpoint/exp3DMM"
 result_dir: "result/exp3DMM"

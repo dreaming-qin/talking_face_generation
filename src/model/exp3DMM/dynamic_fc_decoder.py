@@ -171,7 +171,7 @@ class DynamicLinear(nn.Module):
         x = x.permute(1, 2, 0).unsqueeze(-1)
         out = self.dynamic_conv(x, cond)
         # (B, C_out, L, 1)
-        out = out.squeeze().permute(2, 0, 1)
+        out = out.squeeze(-1).permute(2, 0, 1)
         return out
 
 
