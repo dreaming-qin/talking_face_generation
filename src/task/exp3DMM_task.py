@@ -1,6 +1,4 @@
 import os
-import time
-import numpy as np
 import torch
 
 # 测试代码
@@ -57,7 +55,7 @@ def run(config):
     # 数据集loader
     # 训练集
     # 训练时，gpu显存不够，因此设定训练集的最大长度
-    train_dataset=Exp3DMMdataset(config,type='train',max_len=4)
+    train_dataset=Exp3DMMdataset(config,type='train',max_len=70)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=1, 
@@ -67,23 +65,23 @@ def run(config):
         collate_fn=train_dataset.collater
     )     
     # 验证集
-    eval_dataset=Exp3DMMdataset(config,type='test')
+    eval_dataset=Exp3DMMdataset(config,type='eval')
     eval_dataloader = torch.utils.data.DataLoader(
         eval_dataset,
-        batch_size=128, 
+        batch_size=32, 
         shuffle=True,
         drop_last=False,
-        num_workers=0,
+        num_workers=5,
         collate_fn=eval_dataset.collater
     )     
     # 测试集
     test_dataset=Exp3DMMdataset(config,type='test')
     test_dataloader = torch.utils.data.DataLoader(
         test_dataset,
-        batch_size=128, 
+        batch_size=32, 
         shuffle=True,
         drop_last=False,
-        num_workers=0,
+        num_workers=5,
         collate_fn=test_dataset.collater
     )     
 
@@ -148,7 +146,7 @@ if __name__ == '__main__':
     import yaml,glob
 
     config={}
-    yaml_file=glob.glob(r'config/*/*.yaml')
+    yaml_file=['config/data_process/common.yaml','config/dataset/common.yaml','config/model/exp3DMM.yaml']
     for a in yaml_file:
         with open(a,'r',encoding='utf8') as f:
             config.update(yaml.safe_load(f))

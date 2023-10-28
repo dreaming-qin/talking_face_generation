@@ -17,6 +17,8 @@ import numpy as np
 import zlib
 from torch.multiprocessing import Pool, set_start_method
 import os
+import random
+import shutil
 
 
 
@@ -93,7 +95,7 @@ if __name__=='__main__':
     dataset_root=config['mead_root_path']
     
 
-    # 对于一些不符合规范的视频，删除掉，不然处理会产生问题
+    # # 对于一些不符合规范的视频，删除掉，不然处理会产生问题
     # unvalid_file=[]
     # filenames=sorted(glob.glob(f'{dataset_root}/*/video/*/*/*/*.mp4'))
     # for file in filenames:
@@ -103,29 +105,95 @@ if __name__=='__main__':
     #     os.remove(file)
 
 
-    dir_list=sorted(glob.glob(f'{dataset_root}/*/video/front/*/*'))
-    index=0
-    for i,dir in enumerate(dir_list):
-        if '/workspace/dataset/MEAD/W011/video/front/surprised/level_1' in dir:
-            index=i
-            break
-    dir_list=dir_list[i:]
+    # dir_list=sorted(glob.glob(f'{dataset_root}/*/video/front/*/*'))
+    # # index=0
+    # # for i,dir in enumerate(dir_list):
+    # #     if '/workspace/dataset/MEAD/W011/video/front/surprised/level_1' in dir:
+    # #         index=i
+    # #         break
+    # # dir_list=dir_list[index:]
 
-    # test
-    # dir_list=['data','data2','data3','data4','data5']
-    # for file_list in dir_list:
-    #     format_data_by_cuda(file_list)
-    #     format_data_no_use_cuda(file_list)
+    # # test
+    # # dir_list=['data','data2','data3','data4','data5']
+    # # for file_list in dir_list:
+    # #     format_data_by_cuda(file_list)
+    # #     format_data_no_use_cuda(file_list)
     
-    workers=4
-    pool = Pool(workers)
-    for _ in pool.imap_unordered(format_data_by_cuda,dir_list):
-        None
-    pool.close()
-    print(logger.info('\n使用cuda获得的数据已处理完毕，现在处理不使用cuda的\n'))
-    workers=5
-    pool = Pool(workers)
-    for _ in pool.imap_unordered(format_data_no_use_cuda,dir_list):
-        None
-    pool.close()
+    # workers=4
+    # pool = Pool(workers)
+    # for _ in pool.imap_unordered(format_data_by_cuda,dir_list):
+    #     None
+    # pool.close()
+    # print(logger.info('\n使用cuda获得的数据已处理完毕，现在处理不使用cuda的\n'))
+    # workers=5
+    # pool = Pool(workers)
+    # for _ in pool.imap_unordered(format_data_no_use_cuda,dir_list):
+    #     None
+    # pool.close()
+
+
+
+
+    # # 接下类是转移文件
+    # dataset_root=config['mead_root_path']
+    # filenames=sorted(glob.glob(f'{dataset_root}/*/video/*/*/*/*.pkl'))
+    # out_path=config['format_output_path']
+    # # 拿500作为验证集，500作为测试集，其余作为训练集
+    # temp_index=sorted(random.sample(range(len(filenames)),1000))
+    # eval_file=filenames[temp_index[:500]]
+    # test_file=filenames[temp_index[500:]]
+    # train_file=np.delete(np.array(filenames),temp_index)
+    # cnt=0
+    # for file in eval_file.tolist():
+    #     if cnt%500==0:
+    #         path=os.path.join(out_path,f'eval/{cnt//500}')
+    #         os.makedirs(path,exist_ok=True)
+    #     file_list=file.split('/')
+    #     out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
+    #     out_name=os.path.join(path,out_name)
+    #     shutil.copyfile(file,out_name)
+    #     cnt+=1
+    # cnt=0
+    # for file in test_file.tolist():
+    #     if cnt%500==0:
+    #         path=os.path.join(out_path,f'test/{cnt//500}')
+    #         os.makedirs(path,exist_ok=True)
+    #     file_list=file.split('/')
+    #     out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
+    #     out_name=os.path.join(path,out_name)
+    #     shutil.copyfile(file,out_name)
+    #     cnt+=1
+    # cnt=0
+    # for file in train_file.tolist():
+    #     if cnt%500==0:
+    #         path=os.path.join(out_path,f'train/{cnt//500}')
+    #         os.makedirs(path,exist_ok=True)
+    #     file_list=file.split('/')
+    #     out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
+    #     out_name=os.path.join(path,out_name)
+    #     shutil.copyfile(file,out_name)
+    #     cnt+=1
+    # for file in filenames:
+    #     os.remove(file)
+
+    # # 对于没有video的文件，删除
+    # out_path=config['format_output_path']
+    # filenames=glob.glob(f'{out_path}/*/*/*.pkl')
+    # a=[]
+    # for i in range(len(filenames)):
+    #     file=filenames[i]
+    #     print(i)
+    #     # 解压pkl文件
+    #     with open(file,'rb') as f:
+    #         byte_file=f.read()
+    #     byte_file=zlib.decompress(byte_file)
+    #     data= pickle.loads(byte_file)
+    #     if data['align_video'].shape[0]==0:
+    #         a.append(file)
+    #         # os.remove(file)
+    # print(len(a))
+    # for aaa in a:
+    #     os.remove(aaa)
+
+
     

@@ -61,29 +61,32 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
     def process_video(self,data,max_len=None):
         video_data=data['align_video']
         frame_index=data['frame_index']
+        # 获得参照物图片的信息，更新transformer视频时面部遮罩坐标
+        for i in range(video_data.shape[0]):
+            template_video_array=video_data[i]
+            template_gray = cv2.cvtColor(template_video_array, cv2.COLOR_BGR2GRAY)
+            template_rect = detector(template_gray, 1)
+            if len(template_rect)!=0:
+                template = predictor(template_gray, template_rect[-1]) #detect 68 points
+                template = shape_to_np(template)
+                # 在这里，将会更新transformer视频时面部遮罩坐标
+                top=min(template[50][1],template[52][1])
+                bottom=max(template[56][1],template[57][1])
+                left=template[48][0]
+                right=template[54][0]
+                self.transformed_video_args['crop_mouth_param']['center_x']=(left+right)//2
+                self.transformed_video_args['crop_mouth_param']['center_y']=(top+bottom)//2
+                self.transformed_video_args['crop_mouth_param']['mask_width']=right-left+10
+                self.transformed_video_args['crop_mouth_param']['mask_height']=bottom-top+10
+                break
+
         # 当超出长度限制时，需要截断
         if  (max_len is not None) and (video_data.shape[0]>max_len):
-            temp_index=sorted(random.sample(range(1,frame_index.shape[0]),max_len-1))
-            temp_index=[0]+temp_index
+            temp_index=sorted(random.sample(range(0,frame_index.shape[0]),max_len))
             video_data=video_data[temp_index]
             frame_index=frame_index[temp_index]
 
-        # 获得参照物图片（也就是第一张图片）的信息
-        template_video_array = video_data[0]
-        template_gray = cv2.cvtColor(template_video_array, cv2.COLOR_BGR2GRAY)
-        template_rect = detector(template_gray, 1)
-        template = predictor(template_gray, template_rect[-1]) #detect 68 points
-        template = shape_to_np(template)
-        # 在这里，将会更新transformer视频时面部遮罩坐标
-        top=min(template[50][1],template[52][1])
-        bottom=max(template[56][1],template[57][1])
-        left=template[48][0]
-        right=template[54][0]
-        self.transformed_video_args['crop_mouth_param']['center_x']=(left+right)//2
-        self.transformed_video_args['crop_mouth_param']['center_y']=(top+bottom)//2
-        self.transformed_video_args['crop_mouth_param']['mask_width']=right-left+10
-        self.transformed_video_args['crop_mouth_param']['mask_height']=bottom-top+10
-
+        
         # 更新transformer参数后，开始transformer video
         input_video=self.transformed_video(video_data/255)
         return input_video,frame_index
@@ -108,7 +111,6 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
                 audio_input.append(input_audio_data[-1])
             else:
                 audio_input.append(input_audio_data[frame_index])
-
             if (2*frame_index+1)>=len(input_audio_hubert):
                 audio_hubert.append(input_audio_hubert[-2:])
             else:
@@ -164,10 +166,10 @@ if __name__=='__main__':
         with open(a,'r',encoding='utf8') as f:
             config.update(yaml.safe_load(f))
        
-    dataset=Exp3DMMdataset(config,type='train',max_len=10)
+    dataset=Exp3DMMdataset(config,type='eval',max_len=None)
     dataloader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=3, 
+        batch_size=1, 
         shuffle=True,
         drop_last=False,
         num_workers=0,
