@@ -91,6 +91,7 @@ def run(config):
     model=model.to(device)
     model= torch.nn.DataParallel(model, device_ids=config['device_id'])
     if 'pre_train' in config:
+        train_logger.info('加载预训练模型{}'.format(config['pre_train']))
         state_dict=torch.load(config['pre_train'])
         model.load_state_dict(state_dict)
 
@@ -127,9 +128,8 @@ def run(config):
             torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
             optimizer.step()
         train_logger.info(f'第{epoch}次迭代获得的loss值为{epoch_loss}')
-        train_logger.info('开始验证...')
         eval_loss=eval(model,eval_dataloader,loss_function,checkpoint=None)
-        train_logger.info(f'验证获得的结果为{eval_loss}')
+        train_logger.info(f'对模型进行验证，验证获得的结果为{eval_loss}')
         # 如果验证结果好，保存训练模型
         if eval_loss<best_loss:
             best_loss=eval_loss

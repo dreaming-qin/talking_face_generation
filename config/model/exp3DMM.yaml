@@ -32,4 +32,4 @@ epoch: 1000
 lr: 0.001
 lr_scheduler_step: 0
 
-pre_train: "checkpoint/exp3DMM/epoch_4_loss_17.073764860630035.pth"
+pre_train: "checkpoint/exp3DMM/epoch_5_loss_16.151315189898014.pth"
