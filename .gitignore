@@ -28,6 +28,7 @@ BFM/
 checkpoint/
 result/
 data/
+log/
 
 *.log
 *.pyc

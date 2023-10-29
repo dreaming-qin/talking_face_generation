@@ -25,9 +25,11 @@ video_encoder:
 mouth_weight: [1,1]
 exp_weight: [1,1]
 win_size: 0
-device: "cuda:0"
+device_id: [0,1]
 checkpoint_dir: "checkpoint/exp3DMM"
 result_dir: "result/exp3DMM"
-epoch: 10000
+epoch: 1000
 lr: 0.001
-lr_scheduler_step: 2
+lr_scheduler_step: 0
+
+pre_train: "checkpoint/exp3DMM/epoch_4_loss_17.073764860630035.pth"

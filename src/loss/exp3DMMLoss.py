@@ -30,8 +30,8 @@ class Exp3DMMLoss(nn.Module):
         # loss函数
         self.syncNet=LandmarkHubertSyncNet()
         # 加载预训练模型
-        state_dict=torch.load('checkpoint/syncNet/model_ckpt_steps_40000.ckpt')
-        self.syncNet.load_state_dict(state_dict['state_dict']['model'])
+        # state_dict=torch.load('checkpoint/syncNet/model_ckpt_steps_40000.ckpt')
+        # self.syncNet.load_state_dict(state_dict['state_dict']['model'])
         self.syncNet=self.syncNet.to(device)
         self.mse_loss=nn.MSELoss()
         self.L1_loss=nn.L1Loss()
