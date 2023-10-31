@@ -69,11 +69,13 @@ def transformer_video(video_path):
     reader = imageio.get_reader(video_path)
     driving_video = []
     try:
+        # 信息表示为整型
         driving_video=[im for im in reader]
     except RuntimeError:
         pass
     reader.close()
 
+    # resize操作会归一化帧信息
     driving_video = [resize(frame, (256, 256))[..., :3] for frame in driving_video]
     process_video = get_aligned_image(driving_video)
     # process_video = get_transformed_image(process_video,config)

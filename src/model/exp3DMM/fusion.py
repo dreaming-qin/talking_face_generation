@@ -4,7 +4,7 @@ import numpy as np
 
 
 from .dynamic_fc_decoder import DynamicFCDecoderLayer,DynamicFCDecoder
-from src.util.model_util import _reset_parameters
+from src.util.model_util import reset_parameters
 
 class Fusion(nn.Module):
     '''
@@ -44,7 +44,7 @@ class Fusion(nn.Module):
             dynamic_K,
             dynamic_ratio,
         )
-        _reset_parameters(self.upper_decoder)
+        reset_parameters(self.upper_decoder)
 
         self.lower_decoder = get_decoder_network(
             d_model,
@@ -58,7 +58,7 @@ class Fusion(nn.Module):
             dynamic_K,
             dynamic_ratio,
         )
-        _reset_parameters(self.lower_decoder)
+        reset_parameters(self.lower_decoder)
 
         self.pos_embed = PositionalEncoding(d_model, pos_embed_len)
 

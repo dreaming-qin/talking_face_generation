@@ -18,6 +18,7 @@ if __name__=='__main__':
 
 from src.util.util_3dmm import reconstruct_idexp_lm3d
 from src.model.syncNet.syncNet import LandmarkHubertSyncNet
+from src.util.model_util import freeze_params
 
 class Exp3DMMLoss(nn.Module):
     r'''返回表情3DMM模块的Loss值'''
@@ -32,6 +33,7 @@ class Exp3DMMLoss(nn.Module):
         # 加载预训练模型
         # state_dict=torch.load('checkpoint/syncNet/model_ckpt_steps_40000.ckpt')
         # self.syncNet.load_state_dict(state_dict['state_dict']['model'])
+        freeze_params(self.syncNet)
         self.syncNet=self.syncNet.to(device)
         self.mse_loss=nn.MSELoss()
         self.L1_loss=nn.L1Loss()

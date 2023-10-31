@@ -25,6 +25,7 @@ def eval(model,dataloader,loss_fun,checkpoint=None):
         state_dict=torch.load(checkpoint)
         model.load_state_dict(state_dict)
 
+    model.eval()
     total_loss=0
     for data in tqdm(dataloader):
         # 把数据放到device中
@@ -36,6 +37,8 @@ def eval(model,dataloader,loss_fun,checkpoint=None):
         # 计算loss
         loss=loss_fun(exp_3dmm,data)
         total_loss+=loss.item()
+    model.train()
+    
     return total_loss
 
         

@@ -7,7 +7,7 @@ def get_window(feature, win_size):
         feature (torch.tensor): (B,Len,feature dim)
 
     Returns:
-        feature_wins (torch.tensor): (B,Len,win_size,feature dim)
+        feature_wins (torch.tensor): (B,Len,2*win_size+1,feature dim)
     """
     B,L,_ = feature.shape
     feature_wins=[]
