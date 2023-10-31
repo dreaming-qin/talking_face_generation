@@ -44,7 +44,7 @@ common:
   max_nc: 256
   use_spect: False
 
-weight: [1,1,1]
+common_weight: [0.1,0.9]
 vgg_weight: [0.2,0.2,0.2,0.2,0.2]
 # win_size需要不小于12
 win_size: 12
