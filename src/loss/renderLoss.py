@@ -45,7 +45,7 @@ class RenderLoss(nn.Module):
             x_vgg = self.vgg(x)
             y_vgg = self.vgg(y)
             for i, weight in enumerate(self.vgg_weight):
-                value = torch.abs(x_vgg[i] - y_vgg[i].detach()).mean()
+                value = torch.abs(x_vgg[i] - y_vgg[i]).mean()
                 loss_two += weight * value
         
         # 序列的GAN先留空，因为输入不是序列性的

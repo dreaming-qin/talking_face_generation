@@ -53,4 +53,4 @@ def warp_image(source_image, deformation):
         deformation = deformation.permute(0, 3, 1, 2)
         deformation = torch.nn.functional.interpolate(deformation, size=(h, w), mode='bilinear')
         deformation = deformation.permute(0, 2, 3, 1)
-    return torch.nn.functional.grid_sample(source_image, deformation) 
+    return torch.nn.functional.grid_sample(source_image, deformation,align_corners=False) 

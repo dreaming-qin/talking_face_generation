@@ -52,10 +52,10 @@ win_size: 12
 device_id: [0]
 checkpoint_dir: "checkpoint/render"
 result_dir: "result/render"
-epoch: 4
+epoch: 100
 lr: 0.001
 lr_scheduler_step: 0
 
-exp_3dmm_pre_train: "checkpoint/render/epoch_5_loss_16.151315189898014.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_7_loss_11.65384018048644.pth"
 # render_pre_train: "checkpoint/render/epoch_5_loss_16.151315189898014.pth"
 
