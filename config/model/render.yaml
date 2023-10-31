@@ -52,7 +52,7 @@ win_size: 12
 device_id: [0]
 checkpoint_dir: "checkpoint/render"
 result_dir: "result/render"
-epoch: 1000
+epoch: 4
 lr: 0.001
 lr_scheduler_step: 0
 

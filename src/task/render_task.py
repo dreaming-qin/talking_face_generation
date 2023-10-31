@@ -169,20 +169,20 @@ def run(config):
         collate_fn=train_dataset.collater
     )     
     # 验证集
-    eval_dataset=RenderDataset(config,type='eval',max_len=2)
+    eval_dataset=RenderDataset(config,type='eval',max_len=20)
     eval_dataloader = torch.utils.data.DataLoader(
         eval_dataset,
-        batch_size=2, 
+        batch_size=1, 
         shuffle=True,
         drop_last=False,
         num_workers=0,
         collate_fn=eval_dataset.collater
     )     
     # 测试集
-    test_dataset=RenderDataset(config,type='test',max_len=2)
+    test_dataset=RenderDataset(config,type='test',max_len=20)
     test_dataloader = torch.utils.data.DataLoader(
         test_dataset,
-        batch_size=2, 
+        batch_size=1, 
         shuffle=True,
         drop_last=False,
         num_workers=0,
