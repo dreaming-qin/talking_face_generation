@@ -173,7 +173,7 @@ def run(config):
 
 
 if __name__ == '__main__':
-    import os,sys,yaml
+    import os,sys
     import yaml
 
     # checkpoint = torch.load('checkpoint/render/render.pth', map_location=lambda storage, loc: storage)
