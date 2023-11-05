@@ -1,6 +1,8 @@
 import os
 import torch
 from tqdm import tqdm
+import imageio
+import numpy as np
 
 # 测试代码
 if __name__=='__main__':
@@ -16,6 +18,8 @@ from src.util.logger import logger_config
 from src.dataset.exp3DMMdataset import Exp3DMMdataset
 from src.model.exp3DMM.exp3DMM import Exp3DMM
 from src.loss.exp3DMMLoss import Exp3DMMLoss
+from src.util.model_util import freeze_params
+
 
 
 @torch.no_grad()
@@ -59,10 +63,10 @@ def run(config):
     # 数据集loader
     # 训练集
     # 训练时，gpu显存不够，因此设定训练集的最大长度
-    train_dataset=Exp3DMMdataset(config,type='train',max_len=65)
+    train_dataset=Exp3DMMdataset(config,type='train',max_len=10)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=2, 
+        batch_size=1, 
         shuffle=True,
         drop_last=False,
         num_workers=0,
@@ -120,6 +124,12 @@ def run(config):
             for key,value in data.items():
                 data[key]=value.to(device)
             transformer_video=data['video_input']
+
+            # test
+            # imageio.mimsave('temp_exp3dmm2.mp4',transformer_video[0].cpu().numpy())
+            # transformer_video=np.load('temp.npy')
+            # transformer_video=torch.tensor(transformer_video).to(device).unsqueeze(0)
+
             transformer_video=transformer_video.permute(0,1,4,2,3)
             exp_3dmm=model(transformer_video,data['audio_input'])
             # 计算loss

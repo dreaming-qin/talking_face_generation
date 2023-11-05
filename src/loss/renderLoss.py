@@ -15,55 +15,85 @@ if __name__=='__main__':
     sys.path.append(os.path.join(path,'Deep3DFaceRecon_pytorch'))
 
 
-from src.util.model_util import freeze_params
 from src.model.vgg19 import Vgg19
 
 class RenderLoss(nn.Module):
     r'''返回render模块的Loss值'''
-    def __init__(self, config,device):
+    def __init__(self, config):
         super(RenderLoss, self).__init__()
-        self.device=device
-        self.common_weight=config['common_weight']
-        self.vgg_weight=config['vgg_weight']
+        self.vgg=Vgg19()
+        for param in self.vgg.parameters():
+            param.requires_grad = False
+        self.vgg.eval()
 
         self.L1_loss=nn.L1Loss()
         self.ssim_loss=SSIM()
 
-        self.vgg=Vgg19().to(device)
-        freeze_params(self.vgg)
+        self.num_scales=config['num_scales']
+        self.resize_mode=config['resize_mode']
+        self.vgg_weight=config['vgg_weight']
+        self.common_weight=config['common_weight']
 
-    def forward(self,predicted_video, data):
-        r'''predicted_video[B,len,H,W,3]
+    def forward(self,predicted_video, data,stage=None):
+        r'''predicted_video[B,3,H,W]
         
         返回loss'''
-        # 比较L1 Loss
-        gt_video=data['raw_video']
-        loss_one=self.common_weight[0]*self.L1_loss(predicted_video,gt_video)
-
-        # 获得ssim loss
-        loss_two=0
-        x_video=predicted_video.permute(0,1,4,2,3)
-        y_video=gt_video.permute(0,1,4,2,3)
-        for x,y in zip(x_video,y_video):
-            loss_two+=(1-self.ssim_loss(x,y))
-        loss_two=self.common_weight[1]*loss_two
-
-        # 比较VGG Loss
-        loss_three = 0
-        # [B,len,3,H,W]
-        for x,y in zip(x_video,y_video):
-            x_vgg = self.vgg(x)
-            y_vgg = self.vgg(y)
-            for i, weight in enumerate(self.vgg_weight):
-                value = torch.abs(x_vgg[i] - y_vgg[i]).mean()
-                loss_three += weight * value
+        target=data['target']
+        self.vgg=self.vgg.to(predicted_video.device)
+        predicted_video, target = \
+            apply_imagenet_normalization(predicted_video), \
+            apply_imagenet_normalization(target)
         
-        # 序列的GAN先留空，因为输入不是序列性的
+        loss=0
+        for scale in range(self.num_scales):
+            # 比较VGG Loss
+            loss_three = 0
+            # [B,3,H,W]
+            x_vgg = self.vgg(predicted_video)
+            y_vgg = self.vgg(target)
+            for i, weight in enumerate(self.vgg_weight):
+                value = torch.abs(x_vgg[i] - y_vgg[i].detach()).mean()
+                loss_three += weight * value
+            loss+=loss_three
 
-        loss=loss_one+loss_three+loss_two
+            if stage != 'warp':
+                # 比较L1 Loss
+                loss_one=self.common_weight[0]*self.L1_loss(predicted_video,target)
+                # 获得ssim loss
+                loss_two=(1-self.ssim_loss(predicted_video,target))
+                loss_two=self.common_weight[1]*loss_two
+                # 序列的GAN先留空，因为输入不是序列性的
+                loss+=loss_one+loss_two
+
+            # Downsample the input and target.
+            if scale != self.num_scales - 1:
+                predicted_video = F.interpolate(
+                    predicted_video, mode=self.resize_mode, scale_factor=0.5,
+                    align_corners=False, recompute_scale_factor=True)
+                target = F.interpolate(
+                    target, mode=self.resize_mode, scale_factor=0.5,
+                    align_corners=False, recompute_scale_factor=True)
+
         return loss
 
 
+
+def apply_imagenet_normalization(input):
+    r"""Normalize using ImageNet mean and std.
+
+    Args:
+        input (4D tensor NxCxHxW): The input images, assuming to be [-1, 1].
+
+    Returns:
+        Normalized inputs using the ImageNet normalization.
+    """
+    # normalize the input back to [0, 1]
+    normalized_input = (input + 1) / 2
+    # normalize the input using the ImageNet mean and std
+    mean = normalized_input.new_tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
+    std = normalized_input.new_tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
+    output = (normalized_input - mean) / std
+    return output
 
 
 # 计算一维的高斯分布向量
@@ -176,7 +206,7 @@ if __name__=='__main__':
         with open(a,'r',encoding='utf8') as f:
             config.update(yaml.safe_load(f))
        
-    dataset=RenderDataset(config,type='train',max_len=30)
+    dataset=RenderDataset(config,type='train',frame_num=5)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=3, 
@@ -190,4 +220,5 @@ if __name__=='__main__':
     for data in dataloader:
         for key,value in data.items():
             data[key]=value.to(device)
-        ccc=loss_fun(data['raw_video'],data)
+        ccc=loss_fun(data['src'],data)
+        ccc=loss_fun(data['src'],data,stage='warp')

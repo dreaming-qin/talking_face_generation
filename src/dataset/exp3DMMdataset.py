@@ -82,9 +82,10 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
 
         # 当超出长度限制时，需要截断
         if  (max_len is not None) and (video_data.shape[0]>max_len):
-            temp_index=sorted(random.sample(range(0,frame_index.shape[0]),max_len))
-            video_data=video_data[temp_index]
-            frame_index=frame_index[temp_index]
+            # 由于要生成序列性的视频，需要取一段连续的序列
+            temp_index=random.choice(range(0,frame_index.shape[0]-max_len))
+            video_data=video_data[temp_index:temp_index+max_len]
+            frame_index=frame_index[temp_index:temp_index+max_len]
 
         
         # 更新transformer参数后，开始transformer video

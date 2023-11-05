@@ -44,18 +44,29 @@ common:
   max_nc: 256
   use_spect: False
 
-common_weight: [0.1,0.9]
-vgg_weight: [0.2,0.2,0.2,0.2,0.2]
-# win_size需要不小于12
-win_size: 12
+# loss函数用的
+# common_weight中，第一项是L1 loss，第二项是ssim
+common_weight: [1,1]
+vgg_weight: [1,1,1,1,1]
+num_scales: 4
+resize_mode: "bilinear"
 
+
+# 训练用的
 device_id: [0]
+# epoch
+epoch: 2
+# 在epoch的前warp_epoch中，会先不训练edit，然后会共同训练
+warp_epoch: 1
+lr: 0.0001
+# 在lr_scheduler_step后改变学习率
+lr_scheduler_step: [1]
+# render_win_size需要不小于12
+render_win_size: 13
+
+# 相关文件夹
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_7_loss_11.65384018048644.pth"
+# render_pre_train: "checkpoint/render/warp_epoch_7_loss_408.91805267333984.pth"
 checkpoint_dir: "checkpoint/render"
 result_dir: "result/render"
-epoch: 100
-lr: 0.001
-lr_scheduler_step: 0
-
-exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_7_loss_11.65384018048644.pth"
-# render_pre_train: "checkpoint/render/epoch_5_loss_16.151315189898014.pth"
 
