@@ -1,9 +1,10 @@
 augmentation_params:
-  crop_mouth_param: 
-    center_x: 190
-    center_y: 190
-    mask_width: 100
-    mask_height: 60
+  #用不到了 
+  # crop_mouth_param: 
+  #   center_x: 190
+  #   center_y: 190
+  #   mask_width: 100
+  #   mask_height: 60
   rotation_param: 
     degrees: 30
   perspective_param: 

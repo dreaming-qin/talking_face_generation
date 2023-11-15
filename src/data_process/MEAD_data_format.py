@@ -19,6 +19,8 @@ from torch.multiprocessing import Pool, set_start_method
 import os
 import random
 import shutil
+from scipy.io import loadmat
+
 
 
 
@@ -40,28 +42,46 @@ def format_data_no_use_cuda(dir_name):
     # 先调用两个方法，获得video和audio的数据
     global logger
     logger.info('进程{}处理文件夹{}的内容'.format(os.getpid(),dir_name))
-    process_video(dir_name,process_3DMM=False)
+    process_video(dir_name)
 
+    logger.info('已结束：进程{}任务处理文件夹{}的内容'.format(os.getpid(),dir_name))
+
+
+def merge_data(dir_name):
+    # 获得所有信息后，开始合并所需要的信息
+
+    # 对视频的整理
+    filenames = glob.glob(f'{dir_name}/*.mp4')
+    for video_path in filenames:
+        info={}
+        info['path']=video_path
+        with open(video_path.replace('.mp4','_temp1.pkl'),'rb') as f:
+            process_video= pickle.load(f)
+        info['face_video']=process_video['face_video']
+        info['mouth_mask']=process_video['mouth_mask']
+        info['face_coeff']=loadmat(video_path.replace('.mp4','.mat'))
+        # 获得最终数据
+        with open(video_path.replace('.mp4','_video.pkl'),'wb') as f:
+            info =  pickle.dumps(info)
+            f.write(info)
+        # 完了之后，删除没有必要的数据
+        os.remove(video_path.replace('.mp4','.mat'))
+        os.remove(video_path.replace('.mp4','_temp1.pkl'))
+        os.remove(video_path.replace('.mp4','.txt'))
+    
+
+    # 对音频的整理很简单，在处理方法中直接生成，不需要在这整理
     # 整理数据
     filenames = glob.glob(f'{dir_name}/*.mp4')
     for video_path in filenames:
         info={}
-        # 先处理视频的数据
+        # 先获得视频的数据
         with open(video_path.replace('.mp4','_video.pkl'),'rb') as f:
             temp = pickle.load(f)
-        frame_index=[]
-        align_video=[]
-        for i,frame in enumerate(temp['process_video']):
-            # 当全零像素小于总像素的3/4时，认为是可以作为数据输入的有效帧
-            if np.sum(frame==0)<3*256*256/4:
-                frame_index.append(i)
-                align_video.append(frame)
-        info['align_video']=np.array(align_video)
-        info['face_coeff']=temp['face_coeff']
-        info['frame_index']=np.array(frame_index)
-        info['path']=temp['path']
+        info.update(temp)
 
-        # 再处理音频的数据
+
+        # 再获得音频的数据
         with open(video_path.replace('.mp4','_audio.pkl'),'rb') as f:
             temp = pickle.load(f)
         info['audio_mfcc']=temp['input_audio_mfcc']
@@ -72,7 +92,7 @@ def format_data_no_use_cuda(dir_name):
         info=zlib.compress(info)
         with open(video_path.replace('.mp4','.pkl'),'wb') as f:
             f.write(info)
-        # # 解压测试
+        # # test,解压测试
         # with open(video_path.replace('.mp4','_temp.pkl'),'rb') as f:
         #     a=f.read()
         # a=zlib.decompress(a)
@@ -81,8 +101,37 @@ def format_data_no_use_cuda(dir_name):
         # 完了之后，删除没有必要的数据
         os.remove(video_path.replace('.mp4','_video.pkl'))
         os.remove(video_path.replace('.mp4','_audio.pkl'))
-    
-    logger.info('已结束：进程{}任务处理文件夹{}的内容'.format(os.getpid(),dir_name))
+
+        # 有些没有视频信息的，需要删除
+        info=zlib.decompress(info)
+        info =  pickle.loads(info)
+        frame=info['face_video'][0]
+        if np.sum(frame==0)>3*256*256/4:
+            os.remove(video_path.replace('.mp4','.pkl'))
+        
+        # # test，测试遮罩效果
+        # import cv2
+        # mouth_mask=info['mouth_mask']
+        # process_video=info['face_video']
+        # temp=[]
+        # for i in range(mouth_mask.shape[0]):
+        #     mask = np.random.rand(mouth_mask[i][1]-mouth_mask[i][0],mouth_mask[i][3]-mouth_mask[i][2], 3)
+        #     mask=(mask*255).astype(np.uint8)
+        #     img = process_video[i].copy()
+        #     img[mouth_mask[i][0]:mouth_mask[i][1], mouth_mask[i][2]:mouth_mask[i][3], :] = mask
+        #     temp.append(img)
+        # video_array=np.array(temp)
+        # video_height = video_array.shape[1]
+        # video_width = video_array.shape[2]
+        # out_video_size = (video_width,video_height)
+        # output_video_fourcc = int(cv2.VideoWriter_fourcc(*'mp4v'))
+        # video_write_capture = cv2.VideoWriter('mouth.mp4', output_video_fourcc, 30, out_video_size)
+        # for frame in video_array:
+        #     video_write_capture.write(frame)
+        # video_write_capture.release()
+
+
+
 
 if __name__=='__main__':
     set_start_method('spawn')
@@ -95,7 +144,7 @@ if __name__=='__main__':
     dataset_root=config['mead_root_path']
     
 
-    # # 对于一些不符合规范的视频，删除掉，不然处理会产生问题
+    # 对于一些不符合规范的视频，删除掉，不然处理会产生问题
     # unvalid_file=[]
     # filenames=sorted(glob.glob(f'{dataset_root}/*/video/*/*/*/*.mp4'))
     # for file in filenames:
@@ -113,11 +162,12 @@ if __name__=='__main__':
     # #         break
     # # dir_list=dir_list[index:]
 
-    # # test
-    # # dir_list=['data','data2','data3','data4','data5']
-    # # for file_list in dir_list:
-    # #     format_data_by_cuda(file_list)
-    # #     format_data_no_use_cuda(file_list)
+    # test
+    dir_list=['data']
+    for file_list in dir_list:
+        format_data_by_cuda(file_list)
+        format_data_no_use_cuda(file_list)
+        merge_data(file_list)
     
     # workers=4
     # pool = Pool(workers)
@@ -176,7 +226,9 @@ if __name__=='__main__':
     # for file in filenames:
     #     os.remove(file)
 
-    # # 对于没有video的文件，删除
+
+    
+    # # 对于没有video信息的文件，删除
     # out_path=config['format_output_path']
     # filenames=glob.glob(f'{out_path}/*/*/*.pkl')
     # a=[]
@@ -194,6 +246,4 @@ if __name__=='__main__':
     # print(len(a))
     # for aaa in a:
     #     os.remove(aaa)
-
-
     
