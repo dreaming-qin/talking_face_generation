@@ -12,11 +12,13 @@ import cv2
 import dlib
 import numpy as np
 from src.util.augmentation import AllAugmentationTransform
-from Deep3DFaceRecon_pytorch.extract_kp_videos import keypoints
-from Deep3DFaceRecon_pytorch.face_recon_videos import get3DMM
 import pickle
 import os
 import glob
+import imageio
+
+from Deep3DFaceRecon_pytorch.extract_kp_videos import keypoints
+from Deep3DFaceRecon_pytorch.face_recon_videos import get3DMM
 
 
 detector = dlib.get_frontal_face_detector()
@@ -41,19 +43,18 @@ def __process_video__(video_path):
     '''对视频进行预处理，返回transformer后的numpy数组
     只能对一个视频处理的方法
     '''
-    cap = cv2.VideoCapture(video_path)  
-    driving_video=[]
-    while(cap.isOpened()):  
-        ret, frame = cap.read()
-        # 如果读到了结尾
-        if not ret:
-            break
-        driving_video.append(frame) 
-    cap.release()
+    reader = imageio.get_reader(video_path)
+    driving_video = []
+    try:
+        # 信息表示为整型
+        driving_video=[im for im in reader]
+    except RuntimeError:
+        pass
+    reader.close()
 
     process_video,mouth_mask = get_face_image(driving_video)
 
-    # # test，测试遮罩效果
+    # test，测试遮罩效果
     # temp=[]
     # for i in range(mouth_mask.shape[0]):
     #     mask = np.random.rand(mouth_mask[i][1]-mouth_mask[i][0],mouth_mask[i][3]-mouth_mask[i][2], 3)
@@ -62,14 +63,7 @@ def __process_video__(video_path):
     #     img[mouth_mask[i][0]:mouth_mask[i][1], mouth_mask[i][2]:mouth_mask[i][3], :] = mask
     #     temp.append(img)
     # video_array=np.array(temp)
-    # video_height = video_array.shape[1]
-    # video_width = video_array.shape[2]
-    # out_video_size = (video_width,video_height)
-    # output_video_fourcc = int(cv2.VideoWriter_fourcc(*'mp4v'))
-    # video_write_capture = cv2.VideoWriter('mouth.mp4', output_video_fourcc, 30, out_video_size)
-    # for frame in video_array:
-    #     video_write_capture.write(frame)
-    # video_write_capture.release()
+    # imageio.mimsave('mask.mp4',video_array)
     
 
     return process_video,mouth_mask

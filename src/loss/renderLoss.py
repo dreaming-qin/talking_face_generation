@@ -216,7 +216,7 @@ if __name__=='__main__':
         collate_fn=dataset.collater
     )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    loss_fun=RenderLoss(config,device)
+    loss_fun=RenderLoss(config)
     for data in dataloader:
         for key,value in data.items():
             data[key]=value.to(device)

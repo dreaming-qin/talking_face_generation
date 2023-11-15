@@ -67,19 +67,18 @@ class RenderDataset(torch.utils.data.Dataset):
         return out
 
     def process_video(self,data):
-        r'''返回(img,video_input,raw_video),frame_index这样的数据'''
-        video_data=data['align_video']
-        frame_index=data['frame_index']
+        r'''返回(src,target),frame_index这样的数据'''
+        video_data=data['face_video']
 
         # 由于要生成序列性的视频，需要取一段连续的序列
         # 从video中随机选择frame_num张帧
-        temp_index=random.sample(range(len(frame_index)),self.frame_num)
+        temp_index=random.sample(range(len(video_data)),self.frame_num)
         src=[]
         target=[]
         for i in range(self.frame_num):
             target.append(video_data[temp_index[i]])
             src.append(video_data[temp_index[(i+1)%self.frame_num]])
-        frame_index=frame_index[temp_index]
+        frame_index=temp_index
         src=np.array(src)
         target=np.array(target)
 

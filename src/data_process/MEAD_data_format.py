@@ -109,8 +109,8 @@ def merge_data(dir_name):
         if np.sum(frame==0)>3*256*256/4:
             os.remove(video_path.replace('.mp4','.pkl'))
         
-        # # test，测试遮罩效果
-        # import cv2
+        # test，测试遮罩效果
+        # import imageio
         # mouth_mask=info['mouth_mask']
         # process_video=info['face_video']
         # temp=[]
@@ -121,14 +121,8 @@ def merge_data(dir_name):
         #     img[mouth_mask[i][0]:mouth_mask[i][1], mouth_mask[i][2]:mouth_mask[i][3], :] = mask
         #     temp.append(img)
         # video_array=np.array(temp)
-        # video_height = video_array.shape[1]
-        # video_width = video_array.shape[2]
-        # out_video_size = (video_width,video_height)
-        # output_video_fourcc = int(cv2.VideoWriter_fourcc(*'mp4v'))
-        # video_write_capture = cv2.VideoWriter('mouth.mp4', output_video_fourcc, 30, out_video_size)
-        # for frame in video_array:
-        #     video_write_capture.write(frame)
-        # video_write_capture.release()
+        # imageio.mimsave('mask.mp4',video_array)
+
 
 
 
