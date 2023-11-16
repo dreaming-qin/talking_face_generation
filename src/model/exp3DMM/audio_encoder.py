@@ -21,6 +21,12 @@ class AudioEncoder(nn.Module):
             nn.Linear(2048,256),
             nn.ReLU(True),
         )
+        # self.audio_eocder_fc = nn.Sequential(
+        #     nn.Linear(1024 *12,128),
+        #     nn.ReLU(True),
+        #     nn.Linear(128,256),
+        #     nn.ReLU(True),
+        # )
 
 
     def forward(self,audio):
