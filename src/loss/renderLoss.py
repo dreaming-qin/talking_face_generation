@@ -76,6 +76,9 @@ class RenderLoss(nn.Module):
 
         return loss
 
+    def api_forward(self,predicted_video, gt,stage=None):
+        data={'target':gt}
+        return self(predicted_video,data,stage)
 
 
 def apply_imagenet_normalization(input):

@@ -1,255 +1,275 @@
 from torch import nn
 import torch
 import torch.nn.functional as F
-from src.model.exp3DMM.sync_batchnorm import SynchronizedBatchNorm2d as BatchNorm2d
+from src.util.model_util import reset_parameters
+import copy
+import numpy as np
+
 
 class VideoEncoder(nn.Module):
+    def __init__(
+        self,
+        d_model=512,
+        nhead=8,
+        num_encoder_layers=6,
+        dim_feedforward=2048,
+        dropout=0.1,
+        activation="relu",
+        normalize_before=False,
+        pos_embed_len=80,
+        input_dim=128,
+        aggregate_method="average",
+        **_
+    ):
+        super().__init__()
+        encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward, dropout, activation, normalize_before)
+        encoder_norm = nn.LayerNorm(d_model) if normalize_before else None
+        self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
+        reset_parameters(self.encoder)
+
+        self.pos_embed = PositionalEncoding(d_model, pos_embed_len)
+
+        self.increase_embed_dim = nn.Linear(input_dim, d_model)
+
+        self.aggregate_method = None
+        if aggregate_method == "self_attention_pooling":
+            self.aggregate_method = SelfAttentionPooling(d_model)
+        elif aggregate_method == "average":
+            pass
+        else:
+            raise ValueError(f"Invalid aggregate method {aggregate_method}")
+
+    def forward(self, x, pad_mask=None):
+        """
+
+        Args:
+            x (_type_): (B, num_frames(L), C_exp)
+            pad_mask: (B, num_frames)
+
+        Returns:
+            style_code: (B, C_model)
+        """
+        x = self.increase_embed_dim(x)
+        # (B, L, C)
+        x = x.permute(1, 0, 2)
+        # (L, B, C)
+
+        pos = self.pos_embed(x.shape[0])
+        pos = pos.permute(1, 0, 2)
+        # (L, 1, C)
+
+        style = self.encoder(x, pos=pos, src_key_padding_mask=pad_mask)
+        # (L, B, C)
+
+        if self.aggregate_method is not None:
+            permute_style = style.permute(1, 0, 2)
+            # (B, L, C)
+            style_code = self.aggregate_method(permute_style, pad_mask)
+            return style_code
+
+        if pad_mask is None:
+            style = style.permute(1, 2, 0)
+            # (B, C, L)
+            style_code = style.mean(2)
+            # (B, C)
+        else:
+            permute_style = style.permute(1, 0, 2)
+            # (B, L, C)
+            permute_style[pad_mask] = 0
+            sum_style_code = permute_style.sum(dim=1)
+            # (B, C)
+            valid_token_num = (~pad_mask).sum(dim=1).unsqueeze(-1)
+            # (B, 1)
+            style_code = sum_style_code / valid_token_num
+            # (B, C)
+
+        return style_code
+
+
+
+class SelfAttentionPooling(nn.Module):
     """
-    视频编码器，返回特征，一帧对应的向量是512维
+    Implementation of SelfAttentionPooling
+    Original Paper: Self-Attention Encoding and Pooling for Speaker Recognition
+    https://arxiv.org/pdf/2008.01077v1.pdf
     """
 
-    def __init__(self, block_expansion,  num_channels, max_features,
-                 num_blocks, scale_factor=1,**_):
-        super(VideoEncoder, self).__init__()
-        self.inplanes = 64
-        self.predictor = Hourglass(block_expansion, in_features=num_channels,
-                                   max_features=max_features, num_blocks=num_blocks)
+    def __init__(self, input_dim):
+        super(SelfAttentionPooling, self).__init__()
+        self.W = nn.Sequential(nn.Linear(input_dim, input_dim), Mish(), nn.Linear(input_dim, 1))
+        self.softmax = nn.functional.softmax
 
-        self.scale_factor = scale_factor
-        if self.scale_factor != 1:
-            self.down = AntiAliasInterpolation2d(num_channels, self.scale_factor)
-        self.conv1 = nn.Conv2d(self.predictor.out_filters, 64, kernel_size=3, stride=1, padding=1,
-                               bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.relu = nn.ReLU()
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        layers = [2,2,2,2]
-        self.layer1 = self._make_layer(BasicBlock, 64, layers[0])
-        self.layer2 = self._make_layer(BasicBlock, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(BasicBlock, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(BasicBlock, 256, layers[3], stride=2)
-        self.avgpool = nn.AdaptiveAvgPool2d(1)
+    def forward(self, batch_rep, att_mask=None):
+        """
+        N: batch size, T: sequence length, H: Hidden dimension
+        input:
+            batch_rep : size (N, T, H)
+        attention_weight:
+            att_w : size (N, T, 1)
+        att_mask:
+            att_mask: size (N, T): if True, mask this item.
+        return:
+            utter_rep: size (N, H)
+        """
 
+        att_logits = self.W(batch_rep).squeeze(-1)
+        # (N, T)
+        if att_mask is not None:
+            att_mask_logits = att_mask.to(dtype=batch_rep.dtype) * -100000.0
+            # (N, T)
+            att_logits = att_mask_logits + att_logits
 
-    def _make_layer(self, block, planes, blocks, stride=1):
-        downsample = None
-        if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansion),
-            )
+        att_w = self.softmax(att_logits, dim=-1).unsqueeze(-1)
+        utter_rep = torch.sum(batch_rep * att_w, dim=1)
 
-        layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample))
-        self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes))
+        return utter_rep
 
-        return nn.Sequential(*layers)
-
-
-    def forward(self, x): #torch.Size([4, 3, H, W])
-        r'''video输入维度[B,3,H,W]
-        输出维度[B,512]'''
-        if self.scale_factor != 1:
-            x = self.down(x) # 0.25 [4, 3, H/4, W/4]
-
-        feature_map = self.predictor(x) #[4,3+32,H/4, W/4]
-        f = self.conv1(feature_map) #[16,64,64,64]
-        f = self.bn1(f) #torch.Size([16, 64, 64, 64])
-        f = self.relu(f)
-        f = self.maxpool(f) #[16, 64, 32, 32]
-
-        f = self.layer1(f) #[16, 64, 32, 32]
-        f = self.layer2(f) #[16, 128, 16, 16])
-        f = self.layer3(f) #[16, 256, 8, 8]
-        f = self.layer4(f) #[16, 512, 4, 4]
-        f = self.avgpool(f) #[16, 512, 1, 1]
-        out = f.squeeze(3).squeeze(2)
-
-        return out
-
-class AntiAliasInterpolation2d(nn.Module):
+class Mish(nn.Module):
     """
-    Band-limited downsampling, for better preservation of the input signal.
+    Applies the mish function element-wise:
+    mish(x) = x * tanh(softplus(x)) = x * tanh(ln(1 + exp(x)))
+
+    Shape:
+        - Input: (N, *) where * means, any number of additional
+          dimensions
+        - Output: (N, *), same shape as the input
+
+    Examples:
+        >>> m = Mish()
+        >>> input = torch.randn(2)
+        >>> output = m(input)
+
+    Reference: https://pytorch.org/docs/stable/generated/torch.nn.Mish.html
     """
-    def __init__(self, channels, scale):
-        super(AntiAliasInterpolation2d, self).__init__()
-     #   sigma = (1 / scale - 1) / 2
-        sigma = 1.5
-        kernel_size = 2 * round(sigma * 4) + 1
-        self.ka = kernel_size // 2
-        self.kb = self.ka - 1 if kernel_size % 2 == 0 else self.ka
 
-        kernel_size = [kernel_size, kernel_size]
-        sigma = [sigma, sigma]
-        # The gaussian kernel is the product of the
-        # gaussian function of each dimension.
-        kernel = 1
-        meshgrids = torch.meshgrid(
-            [
-                torch.arange(size, dtype=torch.float32)
-                for size in kernel_size
-                ]
-        )
-        for size, std, mgrid in zip(kernel_size, sigma, meshgrids):
-            mean = (size - 1) / 2
-            kernel *= torch.exp(-(mgrid - mean) ** 2 / (2 * std ** 2))
-
-        # Make sure sum of values in gaussian kernel equals 1.
-        kernel = kernel / torch.sum(kernel)
-        # Reshape to depthwise convolutional weight
-        kernel = kernel.view(1, 1, *kernel.size())
-        kernel = kernel.repeat(channels, *[1] * (kernel.dim() - 1))
-
-        self.register_buffer('weight', kernel)
-        self.groups = channels
-        self.scale = scale
-        inv_scale = 1 / scale
-        self.int_inv_scale = int(inv_scale)
+    def __init__(self):
+        """
+        Init method.
+        """
+        super().__init__()
 
     def forward(self, input):
-        if self.scale == 1.0:
-            return input
-
-        out = F.pad(input, (self.ka, self.kb, self.ka, self.kb))
-        out = F.conv2d(out, weight=self.weight, groups=self.groups)
-        out = out[:, :, ::self.int_inv_scale, ::self.int_inv_scale]
-
-        return out
-
-class Hourglass(nn.Module):
+        """
+        Forward pass of the function.
+        """
+        if torch.__version__ >= "1.9":
+            return F.mish(input)
+        else:
+            return mish(input)
+        
+@torch.jit.script
+def mish(input):
     """
-    Hourglass architecture.
+    Applies the mish function element-wise:
+    mish(x) = x * tanh(softplus(x)) = x * tanh(ln(1 + exp(x)))
+    See additional documentation for mish class.
     """
+    return input * torch.tanh(F.softplus(input))
 
-    def __init__(self, block_expansion, in_features, num_blocks=3, max_features=256):
-        super(Hourglass, self).__init__()
-        self.encoder = Encoder(block_expansion, in_features, num_blocks, max_features)
-        self.decoder = Decoder(block_expansion, in_features, num_blocks, max_features)
-        self.out_filters = self.decoder.out_filters
 
-    def forward(self, x):
-        return self.decoder(self.encoder(x))
+class TransformerEncoderLayer(nn.Module):
+    def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1, activation="relu", normalize_before=False):
+        super().__init__()
+        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        # Implementation of Feedforward model
+        self.linear1 = nn.Linear(d_model, dim_feedforward)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(dim_feedforward, d_model)
 
-class Encoder(nn.Module):
-    """
-    Hourglass Encoder
-    """
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
 
-    def __init__(self, block_expansion, in_features, num_blocks=3, max_features=256):
-        super(Encoder, self).__init__()
+        self.activation = _get_activation_fn(activation)
+        self.normalize_before = normalize_before
 
-        down_blocks = []
-        for i in range(num_blocks):
-            down_blocks.append(DownBlock2d(in_features if i == 0 else min(max_features, block_expansion * (2 ** i)),
-                                           min(max_features, block_expansion * (2 ** (i + 1))),
-                                           kernel_size=3, padding=1))
-        self.down_blocks = nn.ModuleList(down_blocks)
+    def with_pos_embed(self, tensor, pos):
+        return tensor if pos is None else tensor + pos
 
-    def forward(self, x):
-        outs = [x]
-        for down_block in self.down_blocks:
-            outs.append(down_block(outs[-1]))
-        return outs
+    def forward_post(self, src, src_mask=None, src_key_padding_mask=None, pos=None):
+        # q = k = self.with_pos_embed(src, pos)
+        src2 = self.self_attn(src, src, value=src, attn_mask=src_mask, key_padding_mask=src_key_padding_mask)[0]
+        src = src + self.dropout1(src2)
+        src = self.norm1(src)
+        src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))
+        src = src + self.dropout2(src2)
+        src = self.norm2(src)
+        return src
 
-class DownBlock2d(nn.Module):
-    """
-    Downsampling block for use in encoder.
-    """
+    def forward_pre(self, src, src_mask=None, src_key_padding_mask=None, pos=None):
+        src2 = self.norm1(src)
+        # q = k = self.with_pos_embed(src2, pos)
+        src2 = self.self_attn(src2, src2, value=src2, attn_mask=src_mask, key_padding_mask=src_key_padding_mask)[0]
+        src = src + self.dropout1(src2)
+        src2 = self.norm2(src)
+        src2 = self.linear2(self.dropout(self.activation(self.linear1(src2))))
+        src = src + self.dropout2(src2)
+        return src
 
-    def __init__(self, in_features, out_features, kernel_size=3, padding=1, groups=1):
-        super(DownBlock2d, self).__init__()
-        self.conv = nn.Conv2d(in_channels=in_features, out_channels=out_features, kernel_size=kernel_size,
-                              padding=padding, groups=groups)
-        self.norm = BatchNorm2d(out_features, affine=True)
-        self.pool = nn.AvgPool2d(kernel_size=(2, 2))
+    def forward(self, src, src_mask=None, src_key_padding_mask=None, pos=None):
+        if self.normalize_before:
+            return self.forward_pre(src, src_mask, src_key_padding_mask, pos)
+        return self.forward_post(src, src_mask, src_key_padding_mask, pos)
 
-    def forward(self, x):
-        out = self.conv(x)
-        out = self.norm(out)
-        out = F.relu(out)
-        out = self.pool(out)
-        return out
 
-class Decoder(nn.Module):
-    """
-    Hourglass Decoder
-    """
 
-    def __init__(self, block_expansion, in_features, num_blocks=3, max_features=256):
-        super(Decoder, self).__init__()
+def _get_activation_fn(activation):
+    """Return an activation function given a string"""
+    if activation == "relu":
+        return F.relu
+    if activation == "gelu":
+        return F.gelu
+    if activation == "glu":
+        return F.glu
+    raise RuntimeError(f"activation should be relu/gelu, not {activation}.")
 
-        up_blocks = []
 
-        for i in range(num_blocks)[::-1]:
-            in_filters = (1 if i == num_blocks - 1 else 2) * min(max_features, block_expansion * (2 ** (i + 1)))
-            out_filters = min(max_features, block_expansion * (2 ** i))
-            up_blocks.append(UpBlock2d(in_filters, out_filters, kernel_size=3, padding=1))
 
-        self.up_blocks = nn.ModuleList(up_blocks)
-        self.out_filters = block_expansion + in_features
+class TransformerEncoder(nn.Module):
+    def __init__(self, encoder_layer, num_layers, norm=None):
+        super().__init__()
+        self.layers = _get_clones(encoder_layer, num_layers)
+        self.num_layers = num_layers
+        self.norm = norm
 
-    def forward(self, x):
-        out = x.pop()
-        for up_block in self.up_blocks:
-            out = up_block(out)
-            skip = x.pop()
-            out = torch.cat([out, skip], dim=1)
-        return out
+    def forward(self, src, mask=None, src_key_padding_mask=None, pos=None):
+        output = src + pos
 
-class UpBlock2d(nn.Module):
-    """
-    Upsampling block for use in decoder.
-    """
+        for layer in self.layers:
+            output = layer(output, src_mask=mask, src_key_padding_mask=src_key_padding_mask, pos=pos)
 
-    def __init__(self, in_features, out_features, kernel_size=3, padding=1, groups=1):
-        super(UpBlock2d, self).__init__()
+        if self.norm is not None:
+            output = self.norm(output)
 
-        self.conv = nn.Conv2d(in_channels=in_features, out_channels=out_features, kernel_size=kernel_size,
-                              padding=padding, groups=groups)
-        self.norm = BatchNorm2d(out_features, affine=True)
+        return output
 
-    def forward(self, x):
-        out = F.interpolate(x, scale_factor=2)
-        out = self.conv(out)
-        out = self.norm(out)
-        out = F.relu(out)
-        return out
 
-class BasicBlock(nn.Module):
-    expansion = 1
 
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(BasicBlock, self).__init__()
-        self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.relu = nn.ReLU()
-        self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.downsample = downsample
-        self.stride = stride
+def _get_clones(module, N):
+    return nn.ModuleList([copy.deepcopy(module) for i in range(N)])
 
-    def forward(self, x):
-        residual = x
 
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
 
-        out = self.conv2(out)
-        out = self.bn2(out)
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_hid, n_position=200):
+        super(PositionalEncoding, self).__init__()
 
-        if self.downsample is not None:
-            residual = self.downsample(x)
+        # Not a parameter
+        self.register_buffer("pos_table", self._get_sinusoid_encoding_table(n_position, d_hid))
 
-        out += residual
-        out = self.relu(out)
+    def _get_sinusoid_encoding_table(self, n_position, d_hid):
+        """Sinusoid position encoding table"""
+        # TODO: make it with torch instead of numpy
 
-        return out
+        def get_position_angle_vec(position):
+            return [position / np.power(10000, 2 * (hid_j // 2) / d_hid) for hid_j in range(d_hid)]
 
-def conv3x3(in_planes, out_planes, stride=1):
-    "3x3 convolution with padding"
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
+        sinusoid_table = np.array([get_position_angle_vec(pos_i) for pos_i in range(n_position)])
+        sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i
+        sinusoid_table[:, 1::2] = np.cos(sinusoid_table[:, 1::2])  # dim 2i+1
+
+        return torch.FloatTensor(sinusoid_table).unsqueeze(0)
+
+    def forward(self, winsize):
+        return self.pos_table[:, :winsize].clone().detach()

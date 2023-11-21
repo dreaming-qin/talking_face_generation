@@ -83,13 +83,14 @@ class Fusion(nn.Module):
         """
         Args:
             content : (B, len, window, audio dim)
-            style_code : (B, len, window, video dim)
+            style_code : (B,  video dim)
             其中window设置为11
         Returns:
             face3d: (B, len, 3dmm dim)
         """
         B, N, W, C = content.shape
-        style = style_code.permute(2, 0, 1, 3).reshape(W, B * N, C)
+        style = style_code.reshape(B, 1, 1, C).expand(B, N, W, C)
+        style = style.permute(2, 0, 1, 3).reshape(W, B * N, C)
         # (W, B*N, C)
 
         content = content.permute(2, 0, 1, 3).reshape(W, B * N, C)

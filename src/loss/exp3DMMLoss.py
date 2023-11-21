@@ -19,6 +19,7 @@ if __name__=='__main__':
 from src.util.util_3dmm import reconstruct_idexp_lm3d
 from src.model.syncNet.syncNet import LandmarkHubertSyncNet
 from src.util.model_util import freeze_params
+from src.loss.renderLoss import RenderLoss
 
 class Exp3DMMLoss(nn.Module):
     r'''返回表情3DMM模块的Loss值'''
@@ -27,17 +28,16 @@ class Exp3DMMLoss(nn.Module):
         self.device=device
         self.mouth_weight=config['mouth_weight']
         self.exp_weight=config['exp_weight']
+        self.triple_weight=config['triple_weight']
+        self.rec_weight=config['rec_weight']
+        self.distance=config['triple_dis']
 
-        # loss函数
-        self.syncNet=LandmarkHubertSyncNet()
-        # 加载预训练模型
-        # state_dict=torch.load('checkpoint/syncNet/model_ckpt_steps_40000.ckpt')
-        # self.syncNet.load_state_dict(state_dict['state_dict']['model'])
-        freeze_params(self.syncNet)
-        self.syncNet=self.syncNet.to(device)
+
         self.mse_loss=nn.MSELoss()
         self.L1_loss=nn.L1Loss()
         self.logloss = nn.BCELoss()
+        self.relu=nn.ReLU()
+        self.render_loss=RenderLoss(config)
 
         model = loadmat("./BFM/BFM_model_front.mat")
         id_base = torch.from_numpy(model['idBase']).float().to(self.device) # identity basis. [3*N,80], we have 80 eigen faces for identity
@@ -47,57 +47,48 @@ class Exp3DMMLoss(nn.Module):
         self.key_exp_base = exp_base.reshape([-1,3,64])[key_points, :, :].reshape([-1,64]).to(self.device)
 
 
-    def forward(self,predicted_exp_3DMM, data):
+    def forward(self,exp,pos_exp,neg_exp,
+                style,pos_style,neg_style,
+                video,pos_video,neg_video,
+                data):
         # 对于唇部和表情Loss，其中一部分的Loss都需要将3DMM转为landmark，然后比较landmaark
-        # 先生成gt landmark
-        GT_landmark=reconstruct_idexp_lm3d(data['id_3DMM'],data['exp_3DMM'],self.key_id_base,self.key_exp_base)
-        # 再将预测的转为landmark
-        predicted_landmark=reconstruct_idexp_lm3d(data['id_3DMM'],predicted_exp_3DMM,self.key_id_base,self.key_exp_base)
+        type_list=['','neg_','pos_']
+        predict={'exp':exp,'neg_exp':neg_exp,'pos_exp':pos_exp,
+                 'video':video,'neg_video':neg_video,'pos_video':pos_video}
+        loss_mouth=0
+        loss_exp=0
+        rec_loss=0
+        for type in type_list:
+            # 先生成gt landmark
+            GT_landmark=reconstruct_idexp_lm3d(data[f'{type}id_3dmm'],data[f'{type}gt_3dmm'],self.key_id_base,self.key_exp_base)
+            # 再将预测的转为landmark
+            predicted_landmark=reconstruct_idexp_lm3d(data[f'{type}id_3dmm'],predict[f'{type}exp'],self.key_id_base,self.key_exp_base)
 
 
-        # 先计算唇部误差:
-        GT_mouth = GT_landmark[:, :,48:] # [T, 20, 3]
-        predicted_mouth = predicted_landmark[:, :,48:] # [T, 20, 3]
-        
-        
-        # from matplotlib import pyplot as plt
-        # from mpl_toolkits.mplot3d import Axes3D
-        # dot1=predicted_mouth[0,0,:,:].cpu().detach().numpy()
-        # plt.figure()  # 得到画面
-        # ax1 = plt.axes(projection='3d')
-        # ax1.set_xlim(0, 5)  # X轴，横向向右方向
-        # ax1.set_ylim(5, 0)  # Y轴,左向与X,Z轴互为垂直
-        # ax1.set_zlim(0, 5)  # 竖向为Z轴
-        # color1 = ['r', 'g', 'b', 'k', 'm']
-        # marker1 = ['o', 'v', '1', 's', 'H']
-        # i = 0
-        # for x in dot1:
-        #     ax1.scatter(x[0], x[1], x[2], c=color1[i%5],
-        #                 marker=marker1[i%5], linewidths=4)  # 用散点函数画点
-        #     i += 1
-        # plt.show()
+            # 先计算唇部误差:
+            GT_mouth = GT_landmark[:, :,48:] # [T, 20, 3]
+            predicted_mouth = predicted_landmark[:, :,48:] # [T, 20, 3]
+            # 第一部分
+            loss_one=self.mse_loss(GT_mouth,predicted_mouth)
+            loss_mouth+=self.mouth_weight[0]*loss_one
 
-        # 第一部分
-        loss_one=self.mse_loss(GT_mouth,predicted_mouth)
-        # 第二部分，syncNet有很严重的问题，需要解决
-        # mouth,hubert,labels=self.get_audio_and_mouth_clip(predicted_mouth,data['audio_hubert'])
-        # audio_embedding,mouth_embedding=self.syncNet(hubert,mouth)
-        # cos_sim = nn.functional.cosine_similarity(audio_embedding, mouth_embedding)
-        # loss_two = self.logloss(cos_sim, labels)
-        
-        # loss_mouth=self.mouth_weight[0]*loss_one+self.mouth_weight[1]*loss_two
-        loss_mouth=self.mouth_weight[0]*loss_one
+            # 再计算表情误差
+            GT_other = GT_landmark[:, :,:48] # [T, 48, 3]
+            predicted_other= predicted_landmark[:, :,:48] # [T, 48, 3]
+            # 第三部分
+            loss_three=self.mse_loss(GT_other,predicted_other)
+            # 第四部分
+            loss_four=self.L1_loss(predict[f'{type}exp'],data[f'{type}gt_3dmm'])
+            loss_exp+=self.exp_weight[0]*loss_three+self.exp_weight[1]*loss_four
 
-        # 再计算表情误差
-        GT_other = GT_landmark[:, :,:48] # [T, 48, 3]
-        predicted_other= predicted_landmark[:, :,:48] # [T, 48, 3]
-        # 第三部分
-        loss_three=self.mse_loss(GT_other,predicted_other)
-        # 第四部分
-        loss_four=self.L1_loss(predicted_exp_3DMM,data['exp_3DMM'])
-        loss_exp=self.exp_weight[0]*loss_three+self.exp_weight[1]*loss_four
-
-        return loss_mouth+loss_exp
+            # 重建loss
+            rec_loss+=self.rec_weight*self.render_loss.api_forward(predict[f'{type}video'].squeeze(0),
+                        data[f'{type}gt_video'].squeeze(0))
+        # 计算三元对loss
+        triple_loss=self.triple_weight*self.relu(self.mse_loss(style,pos_style)-
+                               self.mse_loss(style,neg_style)+self.distance)
+    
+        return loss_mouth+loss_exp+triple_loss+rec_loss
     
 
     def get_audio_and_mouth_clip(self,mouth_lm3d,mel,batch_size=1024):
@@ -157,7 +148,8 @@ if __name__=='__main__':
     from src.dataset.exp3DMMdataset import Exp3DMMdataset
 
     config={}
-    yaml_file=glob.glob(r'config/*/*.yaml')
+    yaml_file=['config/data_process/common.yaml','config/dataset/common.yaml',
+               'config/model/render.yaml','config/model/exp3DMM.yaml']
     for a in yaml_file:
         with open(a,'r',encoding='utf8') as f:
             config.update(yaml.safe_load(f))
@@ -165,15 +157,18 @@ if __name__=='__main__':
     dataset=Exp3DMMdataset(config)
     dataloader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=3, 
+        batch_size=1, 
         shuffle=True,
         drop_last=False,
         num_workers=0,
-        collate_fn=dataset.collater
+        # collate_fn=dataset.collater
     )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loss_fun=Exp3DMMLoss(config,device)
     for data in dataloader:
         for key,value in data.items():
             data[key]=value.to(device)
-        ccc=loss_fun(data['exp_3DMM'],data)
+        ccc=loss_fun(data['gt_3dmm'],data['pos_gt_3dmm'],data['neg_gt_3dmm'],
+                     torch.ones(2),torch.ones(2),torch.ones(2),
+                     data['gt_video'],data['pos_gt_video'],data['neg_gt_video'],
+                     data)
