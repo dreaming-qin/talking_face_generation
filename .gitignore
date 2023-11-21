@@ -29,6 +29,7 @@ checkpoint/
 result/
 data/
 log/
+data2/
 
 *.log
 *.pyc
