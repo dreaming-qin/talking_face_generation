@@ -28,7 +28,7 @@ def process_video(video_dir):
     r'''输入视频目录，处理该目录下所有mp4的视频，生成的信与视频目录放在一块'''
 
     # 获得transformer video
-    filenames = glob.glob(f'{video_dir}/*.mp4')
+    filenames = sorted(glob.glob(f'{video_dir}/*.mp4'))
     for video_path in filenames:
         info={}
         process_video,mouth_mask=__process_video__(video_path)
@@ -100,8 +100,8 @@ def get_face_image(driving_video):
             left=max(min(left,rects[-1].left()-150),0)
             right=min(max(right,rects[-1].right()+150),video_array.shape[2])
         # test,测试只检测3张，加快速度
-        # if i==3:
-        #     break
+        if i==10:
+            break
     
     if top==100000:
         # 返回一个全零数组，到时丢弃数据好判断

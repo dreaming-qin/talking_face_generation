@@ -15,7 +15,7 @@ if __name__=='__main__':
 
 from src.util.logger import logger_config
 from src.dataset.renderDtaset import RenderDataset
-from src.model.render.render import FaceGenerator
+from src.model.render.render import Render
 from src.loss.renderLoss import RenderLoss
 
 
@@ -78,7 +78,7 @@ def save_result(render,dataloader,save_dir,save_video_num):
         # [B,3,H,W]
         output_dict = render(input_image, driving_source)
     
-        # 输出为视频
+        # 输出为视频，顺序是（目标，源图片，warp，生成图片）
         # [len,H,W,3]
         real_video=data['target'].permute(0,2,3,1)
         # [len,H,W,3]
@@ -89,7 +89,7 @@ def save_result(render,dataloader,save_dir,save_video_num):
         # [len,H,4*W,3]
         video=torch.concatenate((real_video,img,warp,fake),dim=2)
         save_path=os.path.join(save_dir,'{}.mp4'.format(it))
-        torchvision.io.write_video(save_path, ((video+1)/2*255).cpu(), fps=5)
+        torchvision.io.write_video(save_path, ((video+1)/2*255).cpu(), fps=1)
     render.train()
 
     return
@@ -101,7 +101,7 @@ def run(config):
     os.makedirs(config['checkpoint_dir'],exist_ok=True)
 
     # 加载device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device(config['device_id'][0] if torch.cuda.is_available() else "cpu")
 
     # logger
     # 记录日常事务的log（包括训练信息）
@@ -115,10 +115,10 @@ def run(config):
     train_dataset=RenderDataset(config,type='train',frame_num=2)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=1, 
+        batch_size=7, 
         shuffle=True,
         drop_last=False,
-        num_workers=0,
+        num_workers=4,
         collate_fn=train_dataset.collater
     )     
     # 验证集
@@ -128,7 +128,7 @@ def run(config):
         batch_size=5, 
         shuffle=True,
         drop_last=False,
-        num_workers=0,
+        num_workers=2,
         collate_fn=eval_dataset.collater
     )     
     # 测试集
@@ -138,13 +138,13 @@ def run(config):
         batch_size=5, 
         shuffle=True,
         drop_last=False,
-        num_workers=0,
+        num_workers=2,
         collate_fn=test_dataset.collater
     )     
 
 
     #render model
-    render=FaceGenerator(config['mapping_net'],config['warpping_net'],
+    render=Render(config['mapping_net'],config['warpping_net'],
                          config['editing_net'],config['common'])
     render=render.to(device)
     render= torch.nn.DataParallel(render, device_ids=config['device_id'])
@@ -153,8 +153,8 @@ def run(config):
         state_dict=torch.load(config['render_pre_train'])
         render.load_state_dict(state_dict)
 
-    # test
-    save_result(render,eval_dataloader,os.path.join(config['result_dir'],'epoch_-1_warp'),save_video_num=3)
+    # 验证
+    save_result(render,test_dataloader,os.path.join(config['result_dir'],'epoch_-1_warp'),save_video_num=3)
 
     # loss
     loss_function=RenderLoss(config)
@@ -166,7 +166,7 @@ def run(config):
     #     patience=config['lr_scheduler_step'],mode='min', threshold_mode='rel', threshold=0, min_lr=1e-06)
     
     train_logger.info('准备完成，开始训练')
-    best_loss=int(1e10)
+    best_loss={'warp':1e10,'edit':1e10}
     best_checkpoint=None
     for epoch in range(config['epoch']):
         epoch_loss=0
@@ -201,12 +201,12 @@ def run(config):
         train_logger.info('当前学习率为{}'.format(optimizer.param_groups[0]['lr']))
         scheduler.step()
         eval_loss=eval(render,eval_dataloader,loss_function,checkpoint=None,stage=stage)
-        if eval_loss<best_loss:
+        if eval_loss<best_loss[stage]:
             save_path=os.path.join(config['result_dir'],'epoch_{}_{}'.format(epoch,stage))
             save_result(render,eval_dataloader,save_path,save_video_num=3)
             pth_path= os.path.join(config['checkpoint_dir'],f'{stage}_epoch_{epoch}_loss_{epoch_loss}.pth')
             torch.save(render.state_dict(),pth_path)
-            best_loss=epoch_loss
+            best_loss[stage]=epoch_loss
             best_checkpoint=pth_path
     
     # 测试模型
@@ -214,7 +214,7 @@ def run(config):
     test_loss=eval(render,test_dataloader,loss_function,checkpoint=best_checkpoint,stage='edit')
     test_logger.info(f'测试结果为{test_loss}')
     save_path=os.path.join(config['result_dir'],'test')
-    save_result(render,eval_dataloader,save_path,save_video_num=3)
+    save_result(render,test_dataloader,save_path,save_video_num=3)
 
 
 if __name__ == '__main__':
@@ -222,7 +222,7 @@ if __name__ == '__main__':
     import yaml
 
     config={}
-    yaml_file=['config/data_process/common.yaml','config/dataset/common.yaml','config/model/render.yaml']
+    yaml_file=['config/dataset/common.yaml','config/model/render.yaml']
     for a in yaml_file:
         with open(a,'r',encoding='utf8') as f:
             config.update(yaml.safe_load(f))

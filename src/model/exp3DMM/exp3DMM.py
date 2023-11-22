@@ -29,27 +29,25 @@ class Exp3DMM(nn.Module):
         self.video_encoder=VideoEncoder(**cfg['video_encoder'])
         self.fusion_module=Fusion(**cfg['fusion'])
 
-        
         # test
-        temp=0
-        lst=[]
-        for name,para in self.audio_encoder.named_parameters():
-            lst.append((name,para.nelement()))
-            temp+=para.nelement()
-        print(f"total paras number: {temp}")
+        # temp=0
+        # lst=[]
+        # for name,para in self.audio_encoder.named_parameters():
+        #     lst.append((name,para.nelement()))
+        #     temp+=para.nelement()
+        # print(f"audio_encoder total paras number: {temp}")
         # temp=0
         # lst=[]
         # for name,para in self.video_encoder.named_parameters():
         #     lst.append((name,para.nelement()))
         #     temp+=para.nelement()
-        # print(f"total paras number: {temp}")
+        # print(f"video_encoder total paras number: {temp}")
         # temp=0
         # lst=[]
         # for name,para in self.fusion_module.named_parameters():
         #     lst.append((name,para.nelement()))
         #     temp+=para.nelement()
-        # print(f"total paras number: {temp}")
-
+        # print(f"fusion_module total paras number: {temp}")
         
         self.win_size=cfg['audio_win_size']
 

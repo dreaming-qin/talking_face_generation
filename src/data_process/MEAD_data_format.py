@@ -125,14 +125,59 @@ def merge_data(dir_name):
 
 
 
+def merge_data2(dir_name):
+    # 获得所有信息后，开始合并所需要的信息
+    # 从dormat_data入手
+    filenames = glob.glob(f'{dir_name}/*.pkl')
+
+    logger.info('进程{}合并文件夹{}的内容'.format(os.getpid(),dir_name))
+
+    # 存到这
+    for file in filenames:
+        info={}
+        with open(file,'rb') as f:
+            data=f.read()
+        data=zlib.decompress(data)
+        data= pickle.loads(data)
+        info.update(data)
+        info.pop('frame_index')
+        info.pop('path')
+
+        # 再从视频中拿东西
+        video_path=data['path']
+        if not os.path.exists(video_path.replace('.mp4','_temp1.pkl')):
+            continue
+        with open(video_path.replace('.mp4','_temp1.pkl'),'rb') as f:
+            process_video= pickle.load(f)
+        info['face_video']=process_video['face_video']
+        info['mouth_mask']=process_video['mouth_mask']
+        # 完了之后，删除没有必要的数据
+        os.remove(video_path.replace('.mp4','_temp1.pkl'))
+
+        
+        # 没有视频信息的，直接弃用
+        frame=info['face_video'][0]
+        if np.sum(frame==0)>3*256*256/4:
+            continue
+
+        # 获得最终数据，使用压缩操作
+        save_file=file.replace('data2','data')
+        os.makedirs(os.path.dirname(save_file),exist_ok=True)
+        info = pickle.dumps(info)
+        info=zlib.compress(info)
+        with open(save_file,'wb') as f:
+            f.write(info)
+
+    logger.info('已结束：进程{}任务合并文件夹{}的内容'.format(os.getpid(),dir_name))
+
+
 
 
 if __name__=='__main__':
     set_start_method('spawn')
     # 希望各个方法能够做到：输入视频路径，输出pickl的pkl文件
     import yaml
-    with open(r'config/data_process/common.yaml',encoding='utf8') as f:
-        config=yaml.safe_load(f)
+    config={}
     with open(r'config/dataset/common.yaml',encoding='utf8') as f:
         config.update(yaml.safe_load(f))
     dataset_root=config['mead_root_path']
@@ -147,21 +192,23 @@ if __name__=='__main__':
     # for file in unvalid_file:
     #     os.remove(file)
 
+    dir_list=sorted(glob.glob(f'{dataset_root}/*/video/front/*/*'))
 
-    # dir_list=sorted(glob.glob(f'{dataset_root}/*/video/front/*/*'))
-    # # index=0
-    # # for i,dir in enumerate(dir_list):
-    # #     if '/workspace/dataset/MEAD/W011/video/front/surprised/level_1' in dir:
-    # #         index=i
-    # #         break
-    # # dir_list=dir_list[index:]
+    # index=0
+    # for i,dir in enumerate(dir_list):
+    #     if '/workspace/dataset/MEAD/W026/video/front/happy/level_2' in dir:
+    #         index=i
+    #         break
+    # dir_list=dir_list[index:]
 
     # test
-    dir_list=['data']
-    for file_list in dir_list:
-        format_data_by_cuda(file_list)
-        format_data_no_use_cuda(file_list)
-        merge_data(file_list)
+    # dir_list=['data']
+    # for file_list in dir_list:
+    #     # format_data_by_cuda(file_list)
+    #     format_data_no_use_cuda(file_list)
+    # dir_list=['data2/format_data/train/0']
+    # merge_data2(file_list)
+
     
     # workers=4
     # pool = Pool(workers)
@@ -174,6 +221,13 @@ if __name__=='__main__':
     # for _ in pool.imap_unordered(format_data_no_use_cuda,dir_list):
     #     None
     # pool.close()
+    print(logger.info('\n开始合并数据\n'))
+    workers=5
+    dir_list=sorted(glob.glob('data2/format_data/*/*'))
+    pool = Pool(workers)
+    for _ in pool.imap_unordered(merge_data2,dir_list):
+        None
+    pool.close()
 
 
 
@@ -220,24 +274,4 @@ if __name__=='__main__':
     # for file in filenames:
     #     os.remove(file)
 
-
-    
-    # # 对于没有video信息的文件，删除
-    # out_path=config['format_output_path']
-    # filenames=glob.glob(f'{out_path}/*/*/*.pkl')
-    # a=[]
-    # for i in range(len(filenames)):
-    #     file=filenames[i]
-    #     print(i)
-    #     # 解压pkl文件
-    #     with open(file,'rb') as f:
-    #         byte_file=f.read()
-    #     byte_file=zlib.decompress(byte_file)
-    #     data= pickle.loads(byte_file)
-    #     if data['align_video'].shape[0]==0:
-    #         a.append(file)
-    #         # os.remove(file)
-    # print(len(a))
-    # for aaa in a:
-    #     os.remove(aaa)
     

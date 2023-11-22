@@ -2,6 +2,7 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 from math import exp
+from src.util.model_util import freeze_params
 
 
 # 测试代码
@@ -22,8 +23,7 @@ class RenderLoss(nn.Module):
     def __init__(self, config):
         super(RenderLoss, self).__init__()
         self.vgg=Vgg19()
-        for param in self.vgg.parameters():
-            param.requires_grad = False
+        freeze_params(self.vgg)
         self.vgg.eval()
 
         self.L1_loss=nn.L1Loss()
@@ -32,7 +32,8 @@ class RenderLoss(nn.Module):
         self.num_scales=config['num_scales']
         self.resize_mode=config['resize_mode']
         self.vgg_weight=config['vgg_weight']
-        self.common_weight=config['common_weight']
+        # 重构权重
+        self.rec_weight=config['rec_low_weight']
 
     def forward(self,predicted_video, data,stage=None):
         r'''predicted_video[B,3,H,W]
@@ -44,7 +45,18 @@ class RenderLoss(nn.Module):
             apply_imagenet_normalization(predicted_video), \
             apply_imagenet_normalization(target)
         
+        
         loss=0
+        if stage == 'exp':
+            # 比较L1 Loss
+            loss_one=self.rec_weight[0]*self.L1_loss(predicted_video,target)
+            # 获得ssim loss
+            loss_two=(1-self.ssim_loss(predicted_video,target))
+            loss_two=self.rec_weight[1]*loss_two
+            # 序列的GAN先留空，因为输入不是序列性的
+            loss+=loss_one+loss_two
+            return loss
+        
         for scale in range(self.num_scales):
             # 比较VGG Loss
             loss_three = 0
@@ -58,10 +70,10 @@ class RenderLoss(nn.Module):
 
             if stage != 'warp':
                 # 比较L1 Loss
-                loss_one=self.common_weight[0]*self.L1_loss(predicted_video,target)
+                loss_one=self.rec_weight[0]*self.L1_loss(predicted_video,target)
                 # 获得ssim loss
                 loss_two=(1-self.ssim_loss(predicted_video,target))
-                loss_two=self.common_weight[1]*loss_two
+                loss_two=self.rec_weight[1]*loss_two
                 # 序列的GAN先留空，因为输入不是序列性的
                 loss+=loss_one+loss_two
 
@@ -76,9 +88,9 @@ class RenderLoss(nn.Module):
 
         return loss
 
-    def api_forward(self,predicted_video, gt,stage=None):
+    def api_forward_for_exp_3dmm(self,predicted_video, gt,):
         data={'target':gt}
-        return self(predicted_video,data,stage)
+        return self(predicted_video,data,stage='exp')
 
 
 def apply_imagenet_normalization(input):

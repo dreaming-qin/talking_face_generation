@@ -51,6 +51,10 @@ class Exp3DMMLoss(nn.Module):
                 style,pos_style,neg_style,
                 video,pos_video,neg_video,
                 data):
+        r'''exp形状(B,win size,64)
+        style形状(B,dim)
+        video形状(B,frame num,3,H,W)
+        '''
         # 对于唇部和表情Loss，其中一部分的Loss都需要将3DMM转为landmark，然后比较landmaark
         type_list=['','neg_','pos_']
         predict={'exp':exp,'neg_exp':neg_exp,'pos_exp':pos_exp,
@@ -82,8 +86,8 @@ class Exp3DMMLoss(nn.Module):
             loss_exp+=self.exp_weight[0]*loss_three+self.exp_weight[1]*loss_four
 
             # 重建loss
-            rec_loss+=self.rec_weight*self.render_loss.api_forward(predict[f'{type}video'].squeeze(0),
-                        data[f'{type}gt_video'].squeeze(0))
+            for fake_video,gt_video in zip(predict[f'{type}video'],data[f'{type}gt_video']):
+                rec_loss+=self.rec_weight*self.render_loss.api_forward_for_exp_3dmm(fake_video,gt_video)
         # 计算三元对loss
         triple_loss=self.triple_weight*self.relu(self.mse_loss(style,pos_style)-
                                self.mse_loss(style,neg_style)+self.distance)
@@ -148,7 +152,7 @@ if __name__=='__main__':
     from src.dataset.exp3DMMdataset import Exp3DMMdataset
 
     config={}
-    yaml_file=['config/data_process/common.yaml','config/dataset/common.yaml',
+    yaml_file=['config/dataset/common.yaml',
                'config/model/render.yaml','config/model/exp3DMM.yaml']
     for a in yaml_file:
         with open(a,'r',encoding='utf8') as f:

@@ -27,18 +27,23 @@ video_encoder:
   aggregate_method: "self_attention_pooling"
 
 # loss函数的
-mouth_weight: [1,1]
-exp_weight: [1,1]
+mouth_weight: [5,5]
+exp_weight: [2,2]
+# rec_weight中，第一项是L1 loss，第二项是ssim
+rec_low_weight: [0.1,0.9]
 triple_weight: 1
-rec_weight: 88
+rec_weight: 3
 triple_dis: 5
 
 audio_win_size: 5
-device_id: [1]
+render_win_size: 13
+device_id: [0]
 checkpoint_dir: "checkpoint/exp3DMM"
 result_dir: "result/exp3DMM"
-epoch: 1000
-lr: 0.001
-lr_scheduler_step: 0
+epoch: 1
+lr: 0.0001
+# 在lr_scheduler_step后改变学习率
+lr_scheduler_step: 1000000
 
-pre_train: "checkpoint/exp3DMM/epoch_7_loss_11.65384018048644.pth"
+# exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_7_loss_11.65384018048644.pth"
+render_pre_train: "checkpoint/render/warp_epoch_0_loss_551.1777420043945.pth"

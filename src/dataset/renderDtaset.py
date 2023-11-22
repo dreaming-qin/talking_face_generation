@@ -109,7 +109,6 @@ class RenderDataset(torch.utils.data.Dataset):
         return np.array(num_ans)
 
     def process_3DMM(self,data):
-        frame_index_list=data['frame_index']
         data_3DMM=data['face_coeff']['coeff']
 
         # [len,64]

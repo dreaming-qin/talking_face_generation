@@ -7,6 +7,7 @@ import dlib
 from torch.nn.utils.rnn import pad_sequence
 import random
 import os
+import copy
 
 
 
@@ -136,8 +137,8 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         data_3DMM=data['face_coeff']['coeff']
         face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
         style_clip, pad_mask = get_video_style_clip(face3d_exp, style_max_len=256, start_idx=0)
-        out[f'{type}style_clip']=style_clip.float()
-        out[f'{type}mask']=pad_mask
+        out[f'{type}style_clip']=style_clip.float().expand(self.frame_num,-1,-1)
+        out[f'{type}mask']=pad_mask.expand(self.frame_num,-1)
         return out
 
     def process_video(self,data):
@@ -151,57 +152,70 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
             # 由于要生成序列性的视频，需要取一段连续的序列
             temp_index=random.sample(range(len(video_data)),self.frame_num)
             video_data=video_data[temp_index]
-            frame_index=temp_index
+
+        frame_index=[]
+        for i in temp_index:
+            frame_index.append([i])
 
         return video_data,img,frame_index
 
     def process_audio(self,data):
-        frame_index_list=data['frame_index'].copy()
-        for _ in range(self.audio_win_size+self.exp_3dmm_win_size):
-            frame_index_list.append(frame_index_list[-1]+1)
-            frame_index_list.insert(0,max(frame_index_list[0]-1,0))
+        frame_index_list=copy.deepcopy(data['frame_index'])
+        for temp in frame_index_list:
+            for _ in range(self.audio_win_size+self.exp_3dmm_win_size):
+                temp.append(temp[-1]+1)
+                temp.insert(0,max(temp[0]-1,0))
         input_audio_data=data['audio_mfcc']
         input_audio_hubert=data['audio_hugebert']
         audio_input=[]
         audio_hubert=[]
 
         # 获取有效数据
-        for frame_index in frame_index_list:
-            # 对于音频，越界的情况只有在末尾发生，因此直接取最后一个
-            if frame_index>=len(input_audio_data):
-                audio_input.append(input_audio_data[-1])
-            else:
-                audio_input.append(input_audio_data[frame_index])
-            if (2*frame_index+1)>=len(input_audio_hubert):
-                audio_hubert.append(input_audio_hubert[-2:])
-            else:
-                audio_hubert.append(input_audio_hubert[2*frame_index:2*(frame_index+1)])
+        for temp in frame_index_list:
+            input=[]
+            hubert=[]
+            for frame_index in temp:
+                # 对于音频，越界的情况只有在末尾发生，因此直接取最后一个
+                if frame_index>=len(input_audio_data):
+                    input.append(input_audio_data[-1])
+                else:
+                    input.append(input_audio_data[frame_index])
+                if (2*frame_index+1)>=len(input_audio_hubert):
+                    hubert.append(input_audio_hubert[-2:])
+                else:
+                    hubert.append(input_audio_hubert[2*frame_index:2*(frame_index+1)])
+            audio_hubert.append(hubert)
+            audio_input.append(input)
 
         return np.array(audio_input),np.array(audio_hubert)
 
     def process_3DMM(self,data):
-        frame_index_list=data['frame_index'].copy()
+        frame_index_list=copy.deepcopy(data['frame_index'])
         data_3DMM=data['face_coeff']['coeff']
         face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
         face3d_id=data_3DMM[:, 0:80]
-        for _ in range(self.exp_3dmm_win_size):
-            frame_index_list.append(min(frame_index_list[-1]+1,len(face3d_exp)-1))
-            frame_index_list.insert(0,max(frame_index_list[0]-1,0))
+        for temp in frame_index_list:
+            for _ in range(self.exp_3dmm_win_size):
+                temp.append(min(temp[-1]+1,len(face3d_exp)-1))
+                temp.insert(0,max(temp[0]-1,0))
 
-
-        # 获取有效数据，3DMM不像音频，不存在越界情况，因此可以直接通过frame_index获得
-        exp_3DMM=[face3d_exp[frame_index] for frame_index in frame_index_list]
-        id_3DMM=[face3d_id[frame_index] for frame_index in frame_index_list]
+        # [frame num,win size,9]
+        exp_3DMM=[]
+        id_3DMM=[]
+        for temp in frame_index_list:
+            exp_3DMM.append([face3d_exp[frame_index] for frame_index in temp])
+            id_3DMM.append([face3d_id[frame_index] for frame_index in temp])
 
         return np.array(exp_3DMM),np.array(id_3DMM)
 
     def process_pose(self,data):
-        frame_index_list=data['frame_index'].copy()
+        frame_index_list=copy.deepcopy(data['frame_index'])
         mat_dict = data['face_coeff']
         np_3dmm = mat_dict["coeff"]
-        for _ in range(self.exp_3dmm_win_size):
-            frame_index_list.append(min(frame_index_list[-1]+1,len(np_3dmm)-1))
-            frame_index_list.insert(0,max(frame_index_list[0]-1,0))
+        for temp in frame_index_list:
+            for _ in range(self.exp_3dmm_win_size):
+                temp.append(min(temp[-1]+1,len(np_3dmm)-1))
+                temp.insert(0,max(temp[0]-1,0))
 
 
         angles = np_3dmm[:, 224:227]
@@ -212,7 +226,9 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         pose_params = np.concatenate((angles, translations, crop), axis=1)
 
         # [frame num,win size,9]
-        num_ans=[pose_params[frame_index] for frame_index in frame_index_list]
+        num_ans=[]
+        for temp in frame_index_list:
+            num_ans.append([pose_params[frame_index] for frame_index in temp])
         
         return np.array(num_ans)
 

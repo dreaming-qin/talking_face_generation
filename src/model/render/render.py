@@ -18,7 +18,7 @@ if __name__=='__main__':
 import src.model.render.flow_util as flow_util
 from src.model.render.base_function import LayerNorm2d, ADAINHourglass, FineEncoder, FineDecoder
 
-class FaceGenerator(nn.Module):
+class Render(nn.Module):
     def __init__(
         self, 
         mapping_net, 
@@ -26,10 +26,30 @@ class FaceGenerator(nn.Module):
         editing_net, 
         common
         ):  
-        super(FaceGenerator, self).__init__()
+        super(Render, self).__init__()
         self.mapping_net = MappingNet(**mapping_net)
         self.warpping_net = WarpingNet(**warpping_net, **common)
         self.editing_net = EditingNet(**editing_net, **common)
+
+        # test
+        # temp=0
+        # lst=[]
+        # for name,para in self.mapping_net.named_parameters():
+        #     lst.append((name,para.nelement()))
+        #     temp+=para.nelement()
+        # print(f"mapping_net total paras number: {temp}")
+        # temp=0
+        # lst=[]
+        # for name,para in self.warpping_net.named_parameters():
+        #     lst.append((name,para.nelement()))
+        #     temp+=para.nelement()
+        # print(f"warpping_net total paras number: {temp}")
+        # temp=0
+        # lst=[]
+        # for name,para in self.editing_net.named_parameters():
+        #     lst.append((name,para.nelement()))
+        #     temp+=para.nelement()
+        # print(f"editing_net total paras number: {temp}")
  
     def forward(
         self, 
@@ -37,8 +57,8 @@ class FaceGenerator(nn.Module):
         driving_source, 
         stage=None
         ):
-        '''input_image:[len,3,H,W]
-        driving_source:[len,73(exp 3dmm+pose),2*win_size+1]
+        '''input_image:[B,3,H,W]
+        driving_source:[B,73(exp 3dmm+pose),2*win_size+1]
         
         返回[B,3,H,W]
         在这里，H和W为256'''
@@ -174,7 +194,7 @@ if __name__=='__main__':
     exp_3dmm=Exp3DMM(config)
     exp_3dmm=exp_3dmm.to(device)
 
-    render=FaceGenerator(
+    render=Render(
         config['mapping_net'],
         config['warpping_net'],
         config['editing_net'],
