@@ -2,6 +2,7 @@ import os
 import torch
 from tqdm import tqdm
 import torchvision
+import numpy as np
 
 # 测试代码
 if __name__=='__main__':
@@ -18,20 +19,18 @@ from src.dataset.renderDtaset import RenderDataset
 from src.model.render.render import Render
 from src.loss.renderLoss import RenderLoss
 
-
-# 训练时，固定住exp3DMM模块，然后进行训练
-
+from src.metrics.SSIM import ssim as eval_ssim
 
 
 @torch.no_grad()
-def eval(render,dataloader,loss_fun,checkpoint=None,stage='warp'):
+def eval(render,dataloader,checkpoint=None,stage='warp'):
     '''返回结果，这里是loss值'''
     if checkpoint is not None:
         state_dict=torch.load(checkpoint)
         render.load_state_dict(state_dict)
 
     render.eval()
-    total_loss=0
+    metrices=[]
     for data in tqdm(dataloader):
         # 把数据放到device中
         for key,value in data.items():
@@ -43,19 +42,18 @@ def eval(render,dataloader,loss_fun,checkpoint=None,stage='warp'):
         input_image=data['src']
         # [B,3,H,W]
         output_dict = render(input_image, driving_source)
-
+        
         if stage=='warp':
-            loss=loss_fun(output_dict['warp_image'],data,stage='warp')
+            temp=output_dict['warp_image']
         else:
-            loss=loss_fun(output_dict['warp_image'],data,stage='warp')
-            loss+=loss_fun(output_dict['fake_image'],data)
+            temp=output_dict['fake_image']
+        temp=eval_ssim(((temp.permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8),
+                        ((data['target'].permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8))
+        metrices.append(temp)
 
-        # 计算loss
-        total_loss+=loss.item()
-    
     render.train()
 
-    return total_loss
+    return sum(metrices)/len(metrices)
 
 @torch.no_grad()
 def save_result(render,dataloader,save_dir,save_video_num):
@@ -115,10 +113,10 @@ def run(config):
     train_dataset=RenderDataset(config,type='train',frame_num=2)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=7, 
+        batch_size=1, 
         shuffle=True,
         drop_last=False,
-        num_workers=4,
+        num_workers=1,
         collate_fn=train_dataset.collater
     )     
     # 验证集
@@ -166,7 +164,8 @@ def run(config):
     #     patience=config['lr_scheduler_step'],mode='min', threshold_mode='rel', threshold=0, min_lr=1e-06)
     
     train_logger.info('准备完成，开始训练')
-    best_loss={'warp':1e10,'edit':1e10}
+    # 以ssim为准
+    metrices={'warp':-1,'edit':-1}
     best_checkpoint=None
     for epoch in range(config['epoch']):
         epoch_loss=0
@@ -200,20 +199,20 @@ def run(config):
         train_logger.info(f'第{epoch}次迭代获得的loss值为{epoch_loss}')
         train_logger.info('当前学习率为{}'.format(optimizer.param_groups[0]['lr']))
         scheduler.step()
-        eval_loss=eval(render,eval_dataloader,loss_function,checkpoint=None,stage=stage)
-        test_logger.info(f'第{epoch}次迭代后，验证集的指标值为{eval_loss}')
-        if eval_loss<best_loss[stage]:
+        eval_metrices=eval(render,eval_dataloader,checkpoint=None,stage=stage)
+        test_logger.info(f'第{epoch}次迭代后，验证集的指标值为{eval_metrices}')
+        if eval_metrices>metrices[stage]:
             save_path=os.path.join(config['result_dir'],'epoch_{}_{}'.format(epoch,stage))
             save_result(render,eval_dataloader,save_path,save_video_num=3)
-            pth_path= os.path.join(config['checkpoint_dir'],f'{stage}_epoch_{epoch}_loss_{eval_loss}.pth')
+            pth_path= os.path.join(config['checkpoint_dir'],f'{stage}_epoch_{epoch}_metrices_{eval_metrices}.pth')
             torch.save(render.state_dict(),pth_path)
-            best_loss[stage]=eval_loss
+            metrices[stage]=eval_metrices
             best_checkpoint=pth_path
     
     # 测试模型
     test_logger.info(f'模型训练完毕，加载最好的模型{best_checkpoint}进行测试')
-    test_loss=eval(render,test_dataloader,loss_function,checkpoint=best_checkpoint,stage='edit')
-    test_logger.info(f'测试结果为{test_loss}')
+    test_metrices=eval(render,test_dataloader,checkpoint=best_checkpoint,stage='edit')
+    test_logger.info(f'测试结果为{test_metrices}')
     save_path=os.path.join(config['result_dir'],'test')
     save_result(render,test_dataloader,save_path,save_video_num=3)
 

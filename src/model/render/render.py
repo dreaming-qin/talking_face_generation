@@ -69,9 +69,6 @@ class Render(nn.Module):
             descriptor = self.mapping_net(driving_source)
             output = self.warpping_net(input_image, descriptor)
             output['fake_image'] = self.editing_net(input_image, output['warp_image'], descriptor)
-            output['fake_image']=(output['fake_image']+1)/2
-            # 让fake_image的值在0-1之间
-            # output['fake_image']  = torch.sigmoid(output['fake_image'] )
         return output
 
 class MappingNet(nn.Module):

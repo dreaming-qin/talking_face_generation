@@ -22,40 +22,49 @@ from src.model.exp3DMM.exp3DMM import Exp3DMM
 from src.model.render.render import Render
 from src.loss.exp3DMMLoss import Exp3DMMLoss
 from src.util.model_util import freeze_params
+from src.metrics.SSIM import ssim as eval_ssim
+
 
 
 
 @torch.no_grad()
-def eval(exp_model,render,dataloader,loss_fun,checkpoint=None):
+def eval(exp_model,render,dataloader,checkpoint=None):
     '''返回结果，这里是loss值'''
     if checkpoint is not None:
         exp_model.load_state_dict(torch.load(checkpoint))
 
     exp_model.eval()
-    total_loss=0
+    ans=[]
     for data in tqdm(dataloader):
         # 把数据放到device中
         for key,value in data.items():
             data[key]=value.to(next(render.parameters()).device)
         # 样本的
-        result,style_code=exp_model(data['style_clip'],data['audio'],data['mask'])
+        result,_=exp_model(data['style_clip'],data['audio'],data['mask'])
         drving_src=torch.cat((result,data['pose']),dim=2).permute(0,2,1)
         imgs = render(data['img'],drving_src )['fake_image'].unsqueeze(1)
         # 正样本的
-        pos_result,pos_style_code=result,style_code
-        pos_imgs = imgs
+        pos_result,_=exp_model(data['pos_style_clip'],data['pos_audio'],data['pos_mask'])
+        pos_drving_src=torch.cat((pos_result,data['pos_pose']),dim=2).permute(0,2,1)
+        pos_imgs = render(data['pos_img'],pos_drving_src )['fake_image'].unsqueeze(1)
         # 负样本的
-        neg_result,neg_style_code=result,style_code
-        neg_imgs = imgs
+        neg_result,_=exp_model(data['neg_style_clip'],data['neg_audio'],data['neg_mask'])
+        neg_drving_src=torch.cat((neg_result,data['neg_pose']),dim=2).permute(0,2,1)
+        neg_imgs = render(data['neg_img'],neg_drving_src )['fake_image'].unsqueeze(1)
 
-        # 计算loss
-        total_loss+=loss_fun(result,pos_result,neg_result,
-                            style_code,pos_style_code,neg_style_code,
-                            imgs,pos_imgs,neg_imgs,
-                            data)
+        temp=eval_ssim(((imgs.squeeze().permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8),
+                        ((data['gt_video'].squeeze().permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8))
+        ans.append(temp)
+        temp=eval_ssim(((pos_imgs.squeeze().permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8),
+                        ((data['pos_gt_video'].squeeze().permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8))
+        ans.append(temp)
+        temp=eval_ssim(((neg_imgs.squeeze().permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8),
+                        ((data['neg_gt_video'].squeeze().permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8))
+        ans.append(temp)
+
     exp_model.train()
     
-    return total_loss
+    return sum(ans)/len(ans)
 
 
 
@@ -127,7 +136,7 @@ def run(config):
         batch_size=1, 
         shuffle=True,
         drop_last=False,
-        num_workers=0,
+        num_workers=1,
     )     
     # 验证集
     eval_dataset=Exp3DMMdataset(config,type='eval',frame_num=1)
@@ -227,7 +236,7 @@ def run(config):
             optimizer.step()
 
         train_logger.info(f'第{epoch}次迭代获得的loss值为{epoch_loss}')
-        eval_loss=eval(exp_model,render,eval_dataloader,loss_function,checkpoint=None)
+        eval_loss=eval(exp_model,render,eval_dataloader,checkpoint=None)
         test_logger.info(f'第{epoch}次后，对模型进行验证，验证获得的结果为{eval_loss}')
         # 如果验证结果好，保存训练模型
         if eval_loss<best_loss:
