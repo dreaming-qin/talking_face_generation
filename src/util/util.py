@@ -1,4 +1,5 @@
 import torch
+import os
 
 def get_window(feature, win_size):
     """
@@ -50,3 +51,8 @@ def get_windows_by_repeat(feature, win_size):
         feature_wins.append(batch_ans)
     feature_wins=torch.stack(feature_wins)
     return feature_wins
+
+
+def remove_file(file):
+    if os.path.exists(file):
+        os.remove(file)

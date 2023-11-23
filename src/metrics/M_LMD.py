@@ -7,14 +7,14 @@ import os
 import glob
 
 
-'''F-LMD取值范围[0,正无穷]，越小越好'''
+'''M-LMD取值范围[0,正无穷]，越小越好'''
 
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('./checkpoint/shape_predictor_68_face_landmarks.dat')
 
 
-def F_LMD(predict_video,gt_video):
+def M_LMD(predict_video,gt_video):
     '''输入维度(len,H,W,3)'''
     distance=[]
     for predict,gt in zip(predict_video,gt_video):
@@ -30,10 +30,10 @@ def F_LMD(predict_video,gt_video):
 
         # 先获得预测的landmark
         fake_rect = fake_rects[-1]
-        fake_mouth_land = get_landmark(predict, fake_rect)
+        fake_mouth_land = get_lips_landmark(predict, fake_rect)
         # 然后获得gt的landmark
         real_rect = real_rects[-1]
-        real_mouth_land = get_landmark(gt, real_rect)
+        real_mouth_land = get_lips_landmark(gt, real_rect)
 
         dis = (fake_mouth_land-real_mouth_land)**2
         dis = np.sum(dis,axis=1)
@@ -47,7 +47,7 @@ def F_LMD(predict_video,gt_video):
     average_distance = sum(distance) / len(distance)
     return average_distance
 
-def F_LMD_by_path(predict_video_file,gt_video_file):
+def M_LMD_by_path(predict_video_file,gt_video_file):
     pre_reader = imageio.get_reader(predict_video_file)
     predict_video=[im for im in pre_reader]
     pre_reader.close()
@@ -55,16 +55,16 @@ def F_LMD_by_path(predict_video_file,gt_video_file):
     gt_reader = imageio.get_reader(gt_video_file)
     gt_video=[im for im in gt_reader]
     gt_reader.close()
-    return F_LMD(predict_video,gt_video)
+    return M_LMD(predict_video,gt_video)
 
 
-def F_LMD_by_dir(predict_video_dir,gt_video_dir):
+def M_LMD_by_dir(predict_video_dir,gt_video_dir):
     ans=[]
     predict_video_dir=sorted(glob.glob(f'{predict_video_dir}/*.mp4'))
     gt_video_dir=sorted(glob.glob(f'{gt_video_dir}/*.mp4'))
     for predict_video_file,gt_video_file in zip(predict_video_dir,gt_video_dir):
         assert os.path.basename(predict_video_file)==os.path.basename(gt_video_file)
-        temp=F_LMD_by_path(predict_video_file,gt_video_file)
+        temp=M_LMD_by_path(predict_video_file,gt_video_file)
         if temp!=-1:
             ans.append(temp)
     if len(ans)==0:
@@ -74,14 +74,16 @@ def F_LMD_by_dir(predict_video_dir,gt_video_dir):
     return average_distance
 
 
-
-def get_landmark(images, rect):
+def get_lips_landmark(images, rect):
     shape = predictor(images, rect)
     shape = face_utils.shape_to_np(shape)
-    original = np.sum(shape,axis=0) / len(shape)
-    shape = shape - original
-    return shape
-
+    for (name, (i, j)) in face_utils.FACIAL_LANDMARKS_IDXS.items():
+        if name != 'mouth':
+            continue
+        mouth_land = shape[i:j]
+        original = np.sum(mouth_land,axis=0) / len(mouth_land)
+        mouth_land = mouth_land - original
+    return mouth_land
 
 if __name__=='__main__':
-    print(F_LMD_by_path('0.mp4','1.mp4'))
+    print(M_LMD_by_path('0.mp4','1.mp4'))

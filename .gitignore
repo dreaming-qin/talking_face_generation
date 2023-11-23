@@ -24,12 +24,14 @@ TestResults.xml
 
 # 我的
 Deep3DFaceRecon_pytorch/
+syncnet_python/
 BFM/
 checkpoint/
 result/
 data/
 log/
 data2/
+temp/
 
 *.log
 *.pyc

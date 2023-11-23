@@ -58,7 +58,7 @@ class RenderDataset(torch.utils.data.Dataset):
         # [frame num,9,win size]
         pose_data=torch.tensor(pose_data).float().permute(0,2,1)
         # [frame num,win size,64]
-        exp_3DMM=self.process_3DMM(data)
+        exp_3DMM=self.process_exp_3DMM(data)
         # [frame num,64,win size]
         exp_3DMM=torch.tensor(exp_3DMM).float().permute(0,2,1)
         driving_src=torch.cat((exp_3DMM,pose_data),dim=1)
@@ -108,7 +108,7 @@ class RenderDataset(torch.utils.data.Dataset):
         
         return np.array(num_ans)
 
-    def process_3DMM(self,data):
+    def process_exp_3DMM(self,data):
         data_3DMM=data['face_coeff']['coeff']
 
         # [len,64]

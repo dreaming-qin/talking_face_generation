@@ -228,7 +228,7 @@ def run(config):
 
         train_logger.info(f'第{epoch}次迭代获得的loss值为{epoch_loss}')
         eval_loss=eval(exp_model,render,eval_dataloader,loss_function,checkpoint=None)
-        train_logger.info(f'对模型进行验证，验证获得的结果为{eval_loss}')
+        test_logger.info(f'第{epoch}次后，对模型进行验证，验证获得的结果为{eval_loss}')
         # 如果验证结果好，保存训练模型
         if eval_loss<best_loss:
             save_path=os.path.join(config['result_dir'],'epoch_{}'.format(epoch))

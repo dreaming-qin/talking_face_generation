@@ -201,12 +201,13 @@ def run(config):
         train_logger.info('当前学习率为{}'.format(optimizer.param_groups[0]['lr']))
         scheduler.step()
         eval_loss=eval(render,eval_dataloader,loss_function,checkpoint=None,stage=stage)
+        test_logger.info(f'第{epoch}次迭代后，验证集的指标值为{eval_loss}')
         if eval_loss<best_loss[stage]:
             save_path=os.path.join(config['result_dir'],'epoch_{}_{}'.format(epoch,stage))
             save_result(render,eval_dataloader,save_path,save_video_num=3)
-            pth_path= os.path.join(config['checkpoint_dir'],f'{stage}_epoch_{epoch}_loss_{epoch_loss}.pth')
+            pth_path= os.path.join(config['checkpoint_dir'],f'{stage}_epoch_{epoch}_loss_{eval_loss}.pth')
             torch.save(render.state_dict(),pth_path)
-            best_loss[stage]=epoch_loss
+            best_loss[stage]=eval_loss
             best_checkpoint=pth_path
     
     # 测试模型
