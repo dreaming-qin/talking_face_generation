@@ -28,19 +28,19 @@ resize_mode: "bilinear"
 
 
 # 训练用的
-device_id: [0]
+device_id: [1]
 # epoch
-epoch: 2
+epoch: 48
 # 在epoch的前warp_epoch中，会先不训练edit，然后会共同训练
-warp_epoch: 1
+warp_epoch: 8
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [1]
+lr_scheduler_step: [28]
 # render_win_size需要不小于12
 render_win_size: 13
 
 # 相关文件夹
-# render_pre_train: "checkpoint/render/warp_epoch_7_loss_408.91805267333984.pth"
+render_pre_train: "checkpoint/render/0/warp_epoch_34_loss_37432.307768821716.pth"
 checkpoint_dir: "checkpoint/render"
 result_dir: "result/render"
 

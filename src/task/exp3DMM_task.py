@@ -191,7 +191,7 @@ def run(config):
 
 
     # 其它的一些参数
-    best_loss=int(1e10)
+    best_metrices=-1
     best_checkpoint=0
 
     train_logger.info('准备完成，开始训练')
@@ -236,25 +236,25 @@ def run(config):
             optimizer.step()
 
         train_logger.info(f'第{epoch}次迭代获得的loss值为{epoch_loss}')
-        eval_loss=eval(exp_model,render,eval_dataloader,checkpoint=None)
-        test_logger.info(f'第{epoch}次后，对模型进行验证，验证获得的结果为{eval_loss}')
+        eval_metrices=eval(exp_model,render,eval_dataloader,checkpoint=None)
+        test_logger.info(f'第{epoch}次后，对模型进行验证，验证获得的结果为{eval_metrices}')
         # 如果验证结果好，保存训练模型
-        if eval_loss<best_loss:
+        if eval_metrices>best_metrices:
             save_path=os.path.join(config['result_dir'],'epoch_{}'.format(epoch))
             save_result(exp_model,render,eval_dataloader,save_path,save_video_num=3)
-            best_loss=eval_loss
-            pth_path= os.path.join(config['checkpoint_dir'],f'epoch_{epoch}_loss_{best_loss}.pth')
+            best_metrices=eval_metrices
+            pth_path= os.path.join(config['checkpoint_dir'],f'epoch_{epoch}_loss_{best_metrices}.pth')
             best_checkpoint=pth_path
             torch.save(exp_model.state_dict(),pth_path)
         # 根据验证结果，调节学习率
-        scheduler.step(best_loss)
+        scheduler.step(best_metrices)
         train_logger.info('当前学习率为{}'.format(optimizer.param_groups[0]['lr']))
 
 
     
     # 测试模型
     test_logger.info(f'模型训练完毕，加载最好的模型{best_checkpoint}进行测试')
-    test_loss=eval(exp_model,render,test_dataloader,loss_function,checkpoint=best_checkpoint)
+    test_loss=eval(exp_model,render,test_dataloader,checkpoint=best_checkpoint)
     test_logger.info(f'测试结果为{test_loss}')
     save_path=os.path.join(config['result_dir'],'test')
     save_result(exp_model,render,test_dataloader,save_path,save_video_num=3)
