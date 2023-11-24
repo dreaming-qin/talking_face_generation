@@ -39,7 +39,7 @@ def M_LMD(predict_video,gt_video):
         dis = np.sum(dis,axis=1)
         dis = np.sqrt(dis)
         dis = np.sum(dis,axis=0)
-        distance.append(dis)
+        distance.append(dis/len(fake_mouth_land))
 
     if len(distance)==0:
         # -1代表不成功

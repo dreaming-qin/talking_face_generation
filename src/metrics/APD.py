@@ -1,9 +1,9 @@
 import numpy as np
 import glob
+import os
 
 # test 
 if __name__=='__main__':
-    import os
     import sys
     path=sys.path[0]
     for _ in range(2):
@@ -70,6 +70,7 @@ def get_exp_and_pose(mat_file):
     pose_params = np.concatenate((angles, translations, crop), axis=1)
 
     return face3d_exp,pose_params
+    # return face3d_exp,pose_params[:,0:6]
 
 if __name__=='__main__':
     print(APD_by_dir('temp','temp',is_get_3dmm=True))

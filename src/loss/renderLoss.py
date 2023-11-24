@@ -2,7 +2,6 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 from math import exp
-from src.util.model_util import freeze_params
 
 
 # 测试代码
@@ -16,6 +15,7 @@ if __name__=='__main__':
     sys.path.append(os.path.join(path,'Deep3DFaceRecon_pytorch'))
 
 
+from src.util.model_util import freeze_params
 from src.model.vgg19 import Vgg19
 
 class RenderLoss(nn.Module):
@@ -215,7 +215,7 @@ if __name__=='__main__':
     from src.dataset.renderDtaset import RenderDataset
 
     config={}
-    yaml_file=['config/data_process/common.yaml','config/dataset/common.yaml',
+    yaml_file=['config/dataset/common.yaml',
                'config/model/render.yaml']
     for a in yaml_file:
         with open(a,'r',encoding='utf8') as f:
@@ -235,5 +235,5 @@ if __name__=='__main__':
     for data in dataloader:
         for key,value in data.items():
             data[key]=value.to(device)
-        ccc=loss_fun(data['src'],data)
-        ccc=loss_fun(data['src'],data,stage='warp')
+        ccc=loss_fun(data['target'],data)
+        ccc=loss_fun(data['target'],data,stage='warp')

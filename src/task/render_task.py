@@ -113,10 +113,10 @@ def run(config):
     train_dataset=RenderDataset(config,type='train',frame_num=2)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=7, 
+        batch_size=2, 
         shuffle=True,
         drop_last=False,
-        num_workers=3,
+        num_workers=1,
         collate_fn=train_dataset.collater
     )     
     # 验证集

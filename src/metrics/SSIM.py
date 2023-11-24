@@ -33,7 +33,7 @@ def ssim_by_path(predict_video_file,gt_video_file):
     gt_driving_video=[im for im in gt_reader]
     gt_reader.close()
 
-    ssim(predict_driving_video,gt_driving_video)
+    return ssim(predict_driving_video,gt_driving_video)
 
 
 def ssim_by_dir(predict_video_dir,gt_video_dir):

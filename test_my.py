@@ -1,6 +1,7 @@
 
 import os
 from moviepy.editor import VideoFileClip
+import torch
 
 
 
@@ -26,3 +27,17 @@ from moviepy.editor import VideoFileClip
 # video_src2 = 'temp.mp4'
 # video_dst = '002.mp4'
 # add_mp3(video_src1, video_src2, video_dst)
+
+
+def listToTensor():
+    tensor1=torch.tensor([1,2,3])
+    tensor2=torch.tensor([4,5,6])
+    tensor_list=list()
+    tensor_list.append(tensor1)
+    tensor_list.append(tensor2)
+    final_tensor=torch.stack(tensor_list)  ###
+    print('tensor_list:',tensor_list, '  type:',type(tensor_list))
+    print('final_tensor:',final_tensor, '  type',type(final_tensor))
+    pass
+if __name__=='__main__':
+    listToTensor()

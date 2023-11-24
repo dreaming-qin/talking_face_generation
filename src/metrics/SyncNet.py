@@ -1,9 +1,9 @@
 import glob
 import shutil
+import os
 
 # test 
 if __name__=='__main__':
-    import os
     import sys
     path=sys.path[0]
     for _ in range(2):

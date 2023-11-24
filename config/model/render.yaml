@@ -21,26 +21,26 @@ common:
 
 # loss函数用的
 # rec_weight中，第一项是L1 loss，第二项是ssim
-rec_low_weight: [1,1]
+rec_low_weight: [10,10]
 vgg_weight: [1,1,1,1,1]
 num_scales: 4
 resize_mode: "bilinear"
 
 
 # 训练用的
-device_id: [1]
+device_id: [0]
 # epoch
-epoch: 48
+epoch: 2
 # 在epoch的前warp_epoch中，会先不训练edit，然后会共同训练
-warp_epoch: 8
+warp_epoch: 1
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [28]
+lr_scheduler_step: [1]
 # render_win_size需要不小于12
 render_win_size: 13
 
 # 相关文件夹
-render_pre_train: "checkpoint/render/0/warp_epoch_34_loss_37432.307768821716.pth"
+render_pre_train: "checkpoint/render/edit_epoch_21_metrices_0.8828040447315499.pth"
 checkpoint_dir: "checkpoint/render"
 result_dir: "result/render"
 

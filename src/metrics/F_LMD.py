@@ -39,7 +39,7 @@ def F_LMD(predict_video,gt_video):
         dis = np.sum(dis,axis=1)
         dis = np.sqrt(dis)
         dis = np.sum(dis,axis=0)
-        distance.append(dis)
+        distance.append(dis/len(fake_mouth_land))
 
     if len(distance)==0:
         # -1代表不成功
@@ -84,4 +84,4 @@ def get_landmark(images, rect):
 
 
 if __name__=='__main__':
-    print(F_LMD_by_path('0.mp4','1.mp4'))
+    print(F_LMD_by_dir(r'result\render\result\real',r'result\render\result\fake'))
