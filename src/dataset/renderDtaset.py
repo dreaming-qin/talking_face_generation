@@ -78,6 +78,8 @@ class RenderDataset(torch.utils.data.Dataset):
         for i in range(self.frame_num):
             target.append(video_data[temp_index[i]])
             src.append(video_data[temp_index[(i+1)%self.frame_num]])
+        if self.frame_num==1:
+            src=[video_data[random.choice(range(len(video_data)))]]
         frame_index=temp_index
         src=np.array(src)
         target=np.array(target)
@@ -164,7 +166,7 @@ if __name__=='__main__':
     import torchvision
 
     config={}
-    yaml_file=['config/data_process/common.yaml','config/dataset/common.yaml',
+    yaml_file=['config/dataset/common.yaml',
                'config/model/render.yaml']
     for a in yaml_file:
         with open(a,'r',encoding='utf8') as f:

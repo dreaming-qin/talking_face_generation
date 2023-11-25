@@ -46,4 +46,4 @@ lr: 0.0001
 lr_scheduler_step: 1000000
 
 # exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_7_loss_11.65384018048644.pth"
-render_pre_train: "checkpoint/render/warp_epoch_0_loss_551.1777420043945.pth"
+render_pre_train: "checkpoint/render/edit_epoch_21_metrices_0.8828040447315499.pth"

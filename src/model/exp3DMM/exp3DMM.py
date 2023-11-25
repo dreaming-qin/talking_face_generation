@@ -52,17 +52,18 @@ class Exp3DMM(nn.Module):
         self.win_size=cfg['audio_win_size']
 
     def forward(self, exp_3DMM, audio_MFCC, pad_mask=None):
-        """exp_3DMM输入维度[b,len,64]
-        audio_MFCC输入维度[B,LEN,28,mfcc dim]
+        """exp_3DMM输入维度[b,max_len,64]
+        audio_MFCC输入维度[B,win,28,mfcc dim]
         输出维度[B,len,3dmm dim]
         """
-        # [B,len,audio dim]
+        # [B,win,dim]
         audio_feature=self.audio_encoder(audio_MFCC)
+        # [b,dim]
         video_feature=self.video_encoder(exp_3DMM, pad_mask)
-        # [B,len,win_size,audio dim]
+        # [B,win1,win2,dim]
         audio_feature=get_window(audio_feature,self.win_size)
         audio_feature=audio_feature[:,self.win_size:-self.win_size]
-        # [B,len,dim]
+        # [B,win,64]
         exp3DMM=self.fusion_module(audio_feature,video_feature)
         return exp3DMM,video_feature
 
@@ -73,7 +74,7 @@ if __name__=='__main__':
     from src.dataset.exp3DMMdataset import Exp3DMMdataset
 
     config={}
-    yaml_file=['config/data_process/common.yaml','config/dataset/common.yaml',
+    yaml_file=['config/dataset/common.yaml',
                'config/model/exp3DMM.yaml']
     for a in yaml_file:
         with open(a,'r',encoding='utf8') as f:
@@ -85,7 +86,8 @@ if __name__=='__main__':
         batch_size=1, 
         shuffle=True,
         drop_last=False,
-        num_workers=0,
+        num_workers=1,
+        collate_fn=dataset.collater
     )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model=Exp3DMM(config)

@@ -148,7 +148,7 @@ def run(config):
     render= torch.nn.DataParallel(render, device_ids=config['device_id'])
     if 'render_pre_train' in config:
         train_logger.info('render模块加载预训练模型{}'.format(config['render_pre_train']))
-        state_dict=torch.load(config['render_pre_train'])
+        state_dict=torch.load(config['render_pre_train'],map_location=torch.device('cpu'))
         render.load_state_dict(state_dict)
 
     # 验证

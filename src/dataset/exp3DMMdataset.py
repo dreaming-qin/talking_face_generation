@@ -7,6 +7,7 @@ import dlib
 from torch.nn.utils.rnn import pad_sequence
 import random
 import os
+import copy
 
 
 
@@ -106,21 +107,25 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         # 下列的self.process方法中，需要根据frame_index拿出合法数据
         video_data,img,data['frame_index']=self.process_video(data)
         video_data=(video_data/255*2)-1
-        #[frame num,3,H,W]
+        #[frame ,3,H,W]
         out[f'{type}gt_video']=torch.tensor(video_data).float().permute(0,3,1,2)
         img=(img/255*2)-1
-        #[3,H,W]
-        out[f'{type}img']=torch.tensor(img).float().permute(2,0,1)
+        #[frame,3,H,W]
+        out[f'{type}img']=torch.tensor(img).float().permute(0,3,1,2)
 
         data_3DMM=self.process_3DMM(data)
+        # (frame,win,64)
         out[f'{type}gt_3dmm']=torch.tensor(data_3DMM[0]).float()
+        # (frame,win,80)
         out[f'{type}id_3dmm']=torch.tensor(data_3DMM[1]).float()
 
         pose_data=self.process_pose(data)
+        # (frame,win,9)
         out[f'{type}pose']=torch.tensor(pose_data).float()
 
 
         audio_data=self.process_audio(data)
+        # (frame,win,28,dim)
         out[f'{type}audio']=torch.tensor(audio_data[0]).float()
         # out['audio_hubert']=torch.tensor(audio_data[1]).float()
 
@@ -136,72 +141,88 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         data_3DMM=data['face_coeff']['coeff']
         face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
         style_clip, pad_mask = get_video_style_clip(face3d_exp, style_max_len=256, start_idx=0)
-        out[f'{type}style_clip']=style_clip.float()
-        out[f'{type}mask']=pad_mask
+        # (frame,max_len,64)
+        out[f'{type}style_clip']=style_clip.float().expand(self.frame_num,-1,-1)
+        # (frame,max_len)
+        out[f'{type}mask']=pad_mask.expand(self.frame_num,-1)
         return out
 
     def process_video(self,data):
         video_data=data['face_video']
-        # 从video中随机选择一张当源图片
-        temp_index=random.choice(range(0,len(video_data)))
-        img=video_data[temp_index]
 
-        # 当超出长度限制时，需要截断
-        if   (video_data.shape[0]>self.frame_num):
-            # 由于要生成序列性的视频，需要取一段连续的序列
-            temp_index=random.sample(range(len(video_data)),self.frame_num)
-            video_data=video_data[temp_index]
-            frame_index=temp_index
+        temp_index=random.sample(range(len(video_data)),self.frame_num)
+        
+        src=[]
+        target=[]
+        for i in range(self.frame_num):
+            target.append(video_data[temp_index[i]])
+            src.append(video_data[temp_index[(i+1)%self.frame_num]])
+        if self.frame_num==1:
+            src=[video_data[random.choice(range(len(video_data)))]]
 
-        return video_data,img,frame_index
+        frame_index=[]
+        for i in temp_index:
+            frame_index.append([i])
+
+        return np.array(target),np.array(src),frame_index
 
     def process_audio(self,data):
-        frame_index_list=data['frame_index'].copy()
-        for _ in range(self.audio_win_size+self.exp_3dmm_win_size):
-            frame_index_list.append(frame_index_list[-1]+1)
-            frame_index_list.insert(0,max(frame_index_list[0]-1,0))
+        frame_index_list=copy.deepcopy(data['frame_index'])
+        for temp in frame_index_list:
+            for _ in range(self.audio_win_size+self.exp_3dmm_win_size):
+                temp.append(temp[-1]+1)
+                temp.insert(0,max(temp[0]-1,0))
         input_audio_data=data['audio_mfcc']
         input_audio_hubert=data['audio_hugebert']
         audio_input=[]
         audio_hubert=[]
 
         # 获取有效数据
-        for frame_index in frame_index_list:
-            # 对于音频，越界的情况只有在末尾发生，因此直接取最后一个
-            if frame_index>=len(input_audio_data):
-                audio_input.append(input_audio_data[-1])
-            else:
-                audio_input.append(input_audio_data[frame_index])
-            if (2*frame_index+1)>=len(input_audio_hubert):
-                audio_hubert.append(input_audio_hubert[-2:])
-            else:
-                audio_hubert.append(input_audio_hubert[2*frame_index:2*(frame_index+1)])
+        for temp in frame_index_list:
+            input=[]
+            hubert=[]
+            for frame_index in temp:
+                # 对于音频，越界的情况只有在末尾发生，因此直接取最后一个
+                if frame_index>=len(input_audio_data):
+                    input.append(input_audio_data[-1])
+                else:
+                    input.append(input_audio_data[frame_index])
+                if (2*frame_index+1)>=len(input_audio_hubert):
+                    hubert.append(input_audio_hubert[-2:])
+                else:
+                    hubert.append(input_audio_hubert[2*frame_index:2*(frame_index+1)])
+            audio_hubert.append(hubert)
+            audio_input.append(input)
 
         return np.array(audio_input),np.array(audio_hubert)
 
     def process_3DMM(self,data):
-        frame_index_list=data['frame_index'].copy()
+        frame_index_list=copy.deepcopy(data['frame_index'])
         data_3DMM=data['face_coeff']['coeff']
         face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
         face3d_id=data_3DMM[:, 0:80]
-        for _ in range(self.exp_3dmm_win_size):
-            frame_index_list.append(min(frame_index_list[-1]+1,len(face3d_exp)-1))
-            frame_index_list.insert(0,max(frame_index_list[0]-1,0))
+        for temp in frame_index_list:
+            for _ in range(self.exp_3dmm_win_size):
+                temp.append(min(temp[-1]+1,len(face3d_exp)-1))
+                temp.insert(0,max(temp[0]-1,0))
 
-
-        # 获取有效数据，3DMM不像音频，不存在越界情况，因此可以直接通过frame_index获得
-        exp_3DMM=[face3d_exp[frame_index] for frame_index in frame_index_list]
-        id_3DMM=[face3d_id[frame_index] for frame_index in frame_index_list]
+        # [frame num,win size,9]
+        exp_3DMM=[]
+        id_3DMM=[]
+        for temp in frame_index_list:
+            exp_3DMM.append([face3d_exp[frame_index] for frame_index in temp])
+            id_3DMM.append([face3d_id[frame_index] for frame_index in temp])
 
         return np.array(exp_3DMM),np.array(id_3DMM)
 
     def process_pose(self,data):
-        frame_index_list=data['frame_index'].copy()
+        frame_index_list=copy.deepcopy(data['frame_index'])
         mat_dict = data['face_coeff']
         np_3dmm = mat_dict["coeff"]
-        for _ in range(self.exp_3dmm_win_size):
-            frame_index_list.append(min(frame_index_list[-1]+1,len(np_3dmm)-1))
-            frame_index_list.insert(0,max(frame_index_list[0]-1,0))
+        for temp in frame_index_list:
+            for _ in range(self.exp_3dmm_win_size):
+                temp.append(min(temp[-1]+1,len(np_3dmm)-1))
+                temp.insert(0,max(temp[0]-1,0))
 
 
         angles = np_3dmm[:, 224:227]
@@ -212,26 +233,23 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         pose_params = np.concatenate((angles, translations, crop), axis=1)
 
         # [frame num,win size,9]
-        num_ans=[pose_params[frame_index] for frame_index in frame_index_list]
+        num_ans=[]
+        for temp in frame_index_list:
+            num_ans.append([pose_params[frame_index] for frame_index in temp])
         
         return np.array(num_ans)
 
-    # def collater(self, samples):
-    #     # 对齐数据
-    #     # 按照样本，正样本，负样本形式堆叠
-    #     triple_list=['','pos_','neg_']
-    #     data_key=['gt_video','img','gt_3dmm','id_3dmm','audio','style_clip','mask']
-    #     data={}
-    #     for key in data_key:
-    #         for triple in triple_list:
-    #             if key not in data:
-    #                 data[key]=[]
-    #             data[key].append(samples[f'{triple}{key}'])
-    #         temp=data[key]
-    #         temp=torch.stack(temp)
-    #         data[key]=temp
+    def collater(self, samples):
+        # 对齐数据
+        triple_list=['','pos_','neg_']
+        data_key=['gt_video','img','gt_3dmm','id_3dmm','audio','style_clip','mask','pose']
+        data={}
+        for key in data_key:
+            for triple in triple_list:
+                temp=[s[f'{triple}{key}'] for s in samples]
+                data[f'{triple}{key}']=torch.cat(temp)
 
-    #     return data
+        return data
 
 # 测试代码
 if __name__=='__main__':
@@ -248,12 +266,13 @@ if __name__=='__main__':
     dataset=Exp3DMMdataset(config,type='train',frame_num=1)
     dataloader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=1, 
+        batch_size=2, 
         shuffle=True,
         drop_last=False,
-        num_workers=0,
-        # collate_fn=dataset.collater
+        num_workers=1,
+        collate_fn=dataset.collater
     )     
     for data in dataloader:
         for key,value in data.items():
             print('{}形状为{}'.format(key,value.shape))
+        break
