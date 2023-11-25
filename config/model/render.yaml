@@ -40,7 +40,7 @@ lr_scheduler_step: [1]
 render_win_size: 13
 
 # 相关文件夹
-render_pre_train: "checkpoint/render/edit_epoch_21_metrices_0.8828040447315499.pth"
+render_pre_train: "checkpoint/render/0/edit_epoch_32_metrices_0.8905495066160443.pth"
 checkpoint_dir: "checkpoint/render"
 result_dir: "result/render"
 

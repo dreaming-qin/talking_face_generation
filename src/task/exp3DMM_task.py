@@ -132,10 +132,10 @@ def run(config):
     train_dataset=Exp3DMMdataset(config,type='train',frame_num=1)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=7, 
+        batch_size=6, 
         shuffle=True,
         drop_last=False,
-        num_workers=7,
+        num_workers=6,
         collate_fn=train_dataset.collater
     )     
     # 验证集

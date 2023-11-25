@@ -7,6 +7,7 @@ import zlib
 import pickle
 import imageio
 from moviepy.editor import VideoFileClip
+import numpy as np
 
 
 # test
@@ -29,6 +30,8 @@ from src.metrics.F_LMD import F_LMD_by_dir
 from src.metrics.SyncNet import sync_net_by_dir 
 from src.metrics.M_LMD import M_LMD_by_dir
 from src.metrics.SSIM import ssim_by_dir 
+
+'''对render，主要是得知道效果如何，只需要输入是同一个人的情况就行'''
 
 
 @torch.no_grad()
@@ -77,6 +80,7 @@ def generate_video(config):
     render=render.to(device)
     render= torch.nn.DataParallel(render, device_ids=config['device_id'])
     # 必须得有预训练文件
+    print('render加载预训练模型{}...'.format(config['render_pre_train']))
     state_dict=torch.load(config['render_pre_train'],map_location=torch.device('cpu'))
     render.load_state_dict(state_dict)
     freeze_params(render)
@@ -84,6 +88,7 @@ def generate_video(config):
 
     # 拿数据
     file_list=sorted(glob.glob('{}/test/*/*.pkl'.format(config['format_output_path'])))
+    file_list=np.array(file_list)[:config['video_num']]
     print('生成视频中...')
     for file in tqdm(file_list):
         # 解压pkl文件
@@ -107,7 +112,7 @@ def generate_video(config):
         # 送入render
         fake_video=[]
         # 由于GPU限制，10张10张送
-        frame_num=15
+        frame_num=config['frame_num']
         for i in range(0,len(input_img)-frame_num,frame_num):
             output_dict = render(input_img[i:i+frame_num], driving_src[i:i+frame_num])
             # 得到结果(B,3,H,W)
@@ -120,34 +125,14 @@ def generate_video(config):
         real_video=data['face_video']
         save_video(real_video,data,real_save_file)
 
-        real_save_file='{}/result/fake/{}'.format(config['result_dir'],os.path.basename(file).replace('.pkl','.mp4'))
+        fake_save_file='{}/result/fake/{}'.format(config['result_dir'],os.path.basename(file).replace('.pkl','.mp4'))
         fake_video=fake_video.permute(0,2,3,1)
-        save_video(fake_video,data,real_save_file)
+        save_video(fake_video,data,fake_save_file)
 
-def save_video(video,data,save_file):
-    '''对保存视频的封装
-    video是要保存的视频，torch类型数据，形状(B,H,W,3)
-    data是字典数据
-    save_file是保存的文件路径'''
-    os.makedirs(os.path.dirname(save_file),exist_ok=True)
-
-    # 存结果为视频，需要加上音频
-    reader = imageio.get_reader(data['path'])
-    # 获得fps
-    fps = reader.get_meta_data()['fps']
-    reader.close()
-    # 先把视频存好
-    torchvision.io.write_video('temp.mp4', ((video+1)/2*255).cpu(), fps=fps)
-    
-    # 将data['path']的音频嵌入temp.mp4视频中，保存在save_file中
-    video_src1 = VideoFileClip(data['path'])
-    video_src2 = VideoFileClip('temp.mp4')
-    audio = video_src1.audio
-    videoclip2 = video_src2.set_audio(audio)
-    videoclip2.write_videofile(save_file, codec='libx264')
-    
-    # 删除temp.mp4
-    remove_file('temp.mp4')
+        
+        save_file='{}/result/merge/{}'.format(config['result_dir'],os.path.basename(file).replace('.pkl','.mp4'))
+        video=torch.cat((real_video,fake_video),dim=2)
+        save_video(video,data,save_file)
 
 def get_drving(data,win_size):
     '''输入是字典数据，value是torch类型
@@ -174,6 +159,31 @@ def get_drving(data,win_size):
     return driving_src
 
 
+def save_video(video,data,save_file):
+    '''对保存视频的封装
+    video是要保存的视频，torch类型数据，形状(B,H,W,3)，取值范围(-1,1)
+    data是字典数据
+    save_file是保存的文件路径'''
+    os.makedirs(os.path.dirname(save_file),exist_ok=True)
+
+    # 存结果为视频，需要加上音频
+    reader = imageio.get_reader(data['path'])
+    # 获得fps
+    fps = reader.get_meta_data()['fps']
+    reader.close()
+    # 先把视频存好
+    torchvision.io.write_video('temp.mp4', ((video+1)/2*255).cpu(), fps=fps)
+    
+    # 将data['path']的音频嵌入temp.mp4视频中，保存在save_file中
+    video_src1 = VideoFileClip(data['path'])
+    video_src2 = VideoFileClip('temp.mp4')
+    audio = video_src1.audio
+    videoclip2 = video_src2.set_audio(audio)
+    videoclip2.write_videofile(save_file, codec='libx264')
+    
+    # 删除temp.mp4
+    remove_file('temp.mp4')
+
 
 if __name__ == '__main__':
     import os,sys
@@ -184,6 +194,12 @@ if __name__ == '__main__':
     for a in yaml_file:
         with open(a,'r',encoding='utf8') as f:
             config.update(yaml.safe_load(f))
+    
+    # 由于GPU限制，得10张10张的往GPU送
+    config['frame_num']=15
+    # 设置生成的视频数量最大值
+    config['video_num']=2
+
 
     generate_video(config)
     get_metrices(config)

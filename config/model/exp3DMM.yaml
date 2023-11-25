@@ -37,7 +37,7 @@ triple_dis: 5
 
 audio_win_size: 5
 render_win_size: 13
-device_id: [1]
+device_id: [0]
 checkpoint_dir: "checkpoint/exp3DMM"
 result_dir: "result/exp3DMM"
 epoch: 100
@@ -45,5 +45,5 @@ lr: 0.0001
 # 在lr_scheduler_step后改变学习率
 lr_scheduler_step: 1000000
 
-# exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_7_loss_11.65384018048644.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_0_loss_58710.078125.pth"
 render_pre_train: "checkpoint/render/0/edit_epoch_32_metrices_0.8905495066160443.pth"
