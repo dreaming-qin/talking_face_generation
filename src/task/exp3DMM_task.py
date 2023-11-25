@@ -4,6 +4,7 @@ from tqdm import tqdm
 import imageio
 import numpy as np
 import torchvision
+import time
 
 
 # 测试代码
@@ -128,34 +129,33 @@ def run(config):
 
     # 训练集
     # 训练时，获得的数据大小是batch_size*frame_num*3, 3是因为三元对loss
-    # 由于代码问题，frame_num只能为1
     train_dataset=Exp3DMMdataset(config,type='train',frame_num=1)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=1, 
+        batch_size=7, 
         shuffle=True,
         drop_last=False,
-        num_workers=1,
+        num_workers=7,
         collate_fn=train_dataset.collater
     )     
     # 验证集
     eval_dataset=Exp3DMMdataset(config,type='eval',frame_num=1)
     eval_dataloader = torch.utils.data.DataLoader(
         eval_dataset,
-        batch_size=2, 
+        batch_size=5, 
         shuffle=True,
         drop_last=False,
-        num_workers=0,
+        num_workers=5,
         collate_fn=eval_dataset.collater
     )     
     # 测试集
     test_dataset=Exp3DMMdataset(config,type='test',frame_num=1)
     test_dataloader = torch.utils.data.DataLoader(
         test_dataset,
-        batch_size=2, 
+        batch_size=5, 
         shuffle=True,
         drop_last=False,
-        num_workers=0,
+        num_workers=5,
         collate_fn=test_dataset.collater
     )     
 
@@ -195,7 +195,7 @@ def run(config):
 
     # 其它的一些参数
     best_metrices=-1
-    best_checkpoint=0
+    best_checkpoint=''
 
     train_logger.info('准备完成，开始训练')
     # 改到这
@@ -211,6 +211,7 @@ def run(config):
             # imageio.mimsave('temp_exp3dmm2.mp4',transformer_video[0].cpu().numpy())
             # transformer_video=np.load('temp.npy')
             # transformer_video=torch.tensor(transformer_video).to(device).unsqueeze(0)
+            # s=time.time()
 
             # 样本的
             result,style_code=exp_model(data['style_clip'],data['audio'],data['mask'])
@@ -237,6 +238,7 @@ def run(config):
             loss.backward()
             torch.nn.utils.clip_grad_norm_(exp_model.parameters(), 0.5)
             optimizer.step()
+            # print(f'训练用时间{time.time()-s}')
 
         train_logger.info(f'第{epoch}次迭代获得的loss值为{epoch_loss}')
         eval_metrices=eval(exp_model,render,eval_dataloader,checkpoint=None)
@@ -246,7 +248,7 @@ def run(config):
             save_path=os.path.join(config['result_dir'],'epoch_{}'.format(epoch))
             save_result(exp_model,render,eval_dataloader,save_path,save_video_num=3)
             best_metrices=eval_metrices
-            pth_path= os.path.join(config['checkpoint_dir'],f'epoch_{epoch}_loss_{best_metrices}.pth')
+            pth_path= os.path.join(config['checkpoint_dir'],f'epoch_{epoch}_metrices_{best_metrices}.pth')
             best_checkpoint=pth_path
             torch.save(exp_model.state_dict(),pth_path)
         # 根据验证结果，调节学习率

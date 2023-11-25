@@ -4,10 +4,10 @@ import pickle
 import torch
 import numpy as np
 import dlib
-from torch.nn.utils.rnn import pad_sequence
 import random
 import os
 import copy
+import time
 
 
 
@@ -65,7 +65,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         self.emo_dict={}
         for file in self.filenames:
             name=os.path.basename(file)
-            emo=name.split('_')[0]
+            emo=name[:name.rfind('_')]
             if not emo in self.emo_dict:
                 self.emo_dict[emo]=[]
             self.emo_dict[emo].append(file)
@@ -77,7 +77,6 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         return len(self.filenames)
 
     def __getitem__(self, idx):
-        r'''由于gpu大小问题，只能将帧长度设置为70，在这里进行更改'''
         sample=self.filenames[idx]
         emo=os.path.basename(sample)[:os.path.basename(sample).rfind('_')]
         # 随机选择正样本
@@ -145,6 +144,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         out[f'{type}style_clip']=style_clip.float().expand(self.frame_num,-1,-1)
         # (frame,max_len)
         out[f'{type}mask']=pad_mask.expand(self.frame_num,-1)
+        
         return out
 
     def process_video(self,data):
