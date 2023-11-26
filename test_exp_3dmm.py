@@ -32,7 +32,8 @@ from test_render import get_metrices
 
 @torch.no_grad()
 def generate_video(config):
-    '''输入是auido mfcc,style_clip ,video, img。输出是视频'''
+    '''输入是auido mfcc,style_clip ,video, img。
+    输出是视频'''
 
     # 加载device
     device = torch.device(config['device_id'][0] if torch.cuda.is_available() else "cpu")
@@ -43,7 +44,7 @@ def generate_video(config):
     render=render.to(device)
     render= torch.nn.DataParallel(render, device_ids=config['device_id'])
     # 必须得有预训练文件
-    print('render加载预训练模型{}...'.format(config['render_pre_train']))
+    print('render加载预训练模型{}'.format(config['render_pre_train']))
     state_dict=torch.load(config['render_pre_train'],map_location=torch.device('cpu'))
     render.load_state_dict(state_dict)
     freeze_params(render)
@@ -53,7 +54,7 @@ def generate_video(config):
     exp_model=Exp3DMM(config)
     exp_model=exp_model.to(device)
     exp_model= torch.nn.DataParallel(exp_model, device_ids=config['device_id'])
-    print('exp 3dmm加载预训练模型{}...'.format(config['exp_3dmm_pre_train']))
+    print('exp 3dmm加载预训练模型{}'.format(config['exp_3dmm_pre_train']))
     # 必须得有预训练文件
     state_dict=torch.load(config['exp_3dmm_pre_train'],map_location=torch.device('cpu'))
     exp_model.load_state_dict(state_dict)

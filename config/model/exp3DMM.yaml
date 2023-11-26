@@ -45,5 +45,5 @@ lr: 0.0001
 # 在lr_scheduler_step后改变学习率
 lr_scheduler_step: 1000000
 
-exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_0_loss_58710.078125.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_0_metrices_0.8717747590131688.pth"
 render_pre_train: "checkpoint/render/0/edit_epoch_32_metrices_0.8905495066160443.pth"

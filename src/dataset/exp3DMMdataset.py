@@ -129,16 +129,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         # out['audio_hubert']=torch.tensor(audio_data[1]).float()
 
         # 获得style clip，使用同一个人，相同情感的情况下的作为style clip
-        emo=os.path.basename(file)[:os.path.basename(file).rfind('_')]
-        pos_index=random.choice(range(0,len(self.emo_dict[emo])))
-        pos_file=self.emo_dict[emo][pos_index]
-        # 解压pkl文件
-        with open(pos_file,'rb') as f:
-            byte_file=f.read()
-        byte_file=zlib.decompress(byte_file)
-        data= pickle.loads(byte_file)
-        data_3DMM=data['face_coeff']['coeff']
-        face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
+        face3d_exp=data['face_coeff']['coeff'][:, 80:144]
         style_clip, pad_mask = get_video_style_clip(face3d_exp, style_max_len=256, start_idx=0)
         # (frame,max_len,64)
         out[f'{type}style_clip']=style_clip.float().expand(self.frame_num,-1,-1)

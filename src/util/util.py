@@ -1,5 +1,6 @@
 import torch
 import os
+import shutil
 
 def get_window(feature, win_size):
     """
@@ -54,5 +55,9 @@ def get_windows_by_repeat(feature, win_size):
 
 
 def remove_file(file):
+    '''删除目录和文件都行'''
     if os.path.exists(file):
-        os.remove(file)
+        if os.path.isfile(file):
+            os.remove(file)
+        else:
+            shutil.rmtree(file)

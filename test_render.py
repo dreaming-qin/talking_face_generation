@@ -33,7 +33,6 @@ from src.metrics.SSIM import ssim_by_dir
 
 '''对render，主要是得知道效果如何，只需要输入是同一个人的情况就行'''
 
-
 @torch.no_grad()
 def get_metrices(config):
     real_dir='{}/result/real'.format(config['result_dir'])
@@ -68,6 +67,10 @@ def get_metrices(config):
             line+='\n'
             f.writelines(line)
 
+    # 删除fake和real文件夹
+    remove_file(real_dir)
+    remove_file(fake_dir)
+
 @torch.no_grad()
 def generate_video(config):
 
@@ -80,7 +83,7 @@ def generate_video(config):
     render=render.to(device)
     render= torch.nn.DataParallel(render, device_ids=config['device_id'])
     # 必须得有预训练文件
-    print('render加载预训练模型{}...'.format(config['render_pre_train']))
+    print('render加载预训练模型{}'.format(config['render_pre_train']))
     state_dict=torch.load(config['render_pre_train'],map_location=torch.device('cpu'))
     render.load_state_dict(state_dict)
     freeze_params(render)
@@ -157,7 +160,6 @@ def get_drving(data,win_size):
     driving_src=get_window(driving_src,win_size)
     driving_src=driving_src.squeeze().permute(0,2,1)
     return driving_src
-
 
 def save_video(video,data,save_file):
     '''对保存视频的封装
