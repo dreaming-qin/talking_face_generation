@@ -141,7 +141,6 @@ def merge_data2(dir_name):
         data= pickle.loads(data)
         info.update(data)
         info.pop('frame_index')
-        info.pop('path')
 
         # 再从视频中拿东西
         video_path=data['path']

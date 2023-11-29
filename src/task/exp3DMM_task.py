@@ -135,7 +135,7 @@ def run(config):
         batch_size=6, 
         shuffle=True,
         drop_last=False,
-        num_workers=6,
+        num_workers=3,
         collate_fn=train_dataset.collater
     )     
     # 验证集
@@ -145,7 +145,7 @@ def run(config):
         batch_size=5, 
         shuffle=True,
         drop_last=False,
-        num_workers=5,
+        num_workers=2,
         collate_fn=eval_dataset.collater
     )     
     # 测试集
@@ -155,7 +155,7 @@ def run(config):
         batch_size=5, 
         shuffle=True,
         drop_last=False,
-        num_workers=5,
+        num_workers=2,
         collate_fn=test_dataset.collater
     )     
 

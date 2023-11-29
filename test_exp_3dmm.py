@@ -63,7 +63,7 @@ def generate_video(config):
 
     # 拿数据
     file_list=sorted(glob.glob('{}/test/*/*.pkl'.format(config['format_output_path'])))
-    file_list=np.array(file_list)[:config['video_num']]
+    file_list=np.array(file_list)[:config['video_num']].tolist()
     print('生成视频中...')
     for file in tqdm(file_list):
         # 解压pkl文件
@@ -71,6 +71,14 @@ def generate_video(config):
             byte_file=f.read()
         byte_file=zlib.decompress(byte_file)
         data= pickle.loads(byte_file)
+
+        # test
+        str_clip=os.path.basename(file).replace('.pkl','.mp4').split('_')
+        data['path']=f'/workspace/dataset/MEAD/{str_clip[0]}/video/{str_clip[1]}/{str_clip[2]}'+\
+            f'/{str_clip[3]}_{str_clip[4]}/{str_clip[5]}'
+        # if '/workspace/dataset/MEAD/M027/video/front/contempt/level_3/011.mp4'!=data['path']:
+        #     continue
+
         data=to_device(data,device,config)
 
         # 生成exp 3dmm
@@ -83,6 +91,7 @@ def generate_video(config):
         fake_video=[]
         # 由于GPU限制，10张10张送
         frame_num=config['frame_num']
+        i=-frame_num
         for i in range(0,len(data['img'])-frame_num,frame_num):
             output_dict = render(data['img'][i:i+frame_num], driving_src[i:i+frame_num])
             # 得到结果(B,3,H,W)
@@ -99,7 +108,6 @@ def generate_video(config):
         fake_video=fake_video.permute(0,2,3,1)
         save_video(fake_video,data,fake_save_file)
 
-        
         save_file='{}/result/merge/{}'.format(config['result_dir'],os.path.basename(file).replace('.pkl','.mp4'))
         video=torch.cat((real_video,fake_video),dim=2)
         save_video(video,data,save_file)
@@ -171,9 +179,9 @@ if __name__ == '__main__':
             config.update(yaml.safe_load(f))
     
     # 由于GPU限制，得10张10张的往GPU送
-    config['frame_num']=15
+    config['frame_num']=160
     # 设置生成的视频数量最大值
-    config['video_num']=100
+    config['video_num']=100000
 
 
     generate_video(config)
