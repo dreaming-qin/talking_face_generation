@@ -25,7 +25,7 @@ from src.metrics.SSIM import ssim as eval_ssim
 @torch.no_grad()
 def eval(render,dataloader,checkpoint=None,stage='warp'):
     '''返回结果，这里是loss值'''
-    if checkpoint is not None:
+    if checkpoint is not None and '' != checkpoint:
         state_dict=torch.load(checkpoint)
         render.load_state_dict(state_dict)
 

@@ -31,7 +31,7 @@ from src.metrics.SSIM import ssim as eval_ssim
 @torch.no_grad()
 def eval(exp_model,render,dataloader,checkpoint=None):
     '''返回结果，这里是loss值'''
-    if checkpoint is not None:
+    if checkpoint is not None and '' != checkpoint:
         exp_model.load_state_dict(torch.load(checkpoint))
 
     exp_model.eval()
@@ -189,13 +189,13 @@ def run(config):
 
     # 优化器
     optimizer = torch.optim.Adam(exp_model.parameters(), lr=config['lr'], betas=(0.5, 0.999))
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5,verbose=True,cooldown=0,
-        patience=config['lr_scheduler_step'],mode='min', threshold_mode='rel', threshold=0, min_lr=5e-05)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,milestones=config['lr_scheduler_step']
+                ,gamma=0.2,verbose=True)
 
 
     # 其它的一些参数
     best_metrices=-1
-    best_checkpoint=''
+    best_checkpoint=None
 
     train_logger.info('准备完成，开始训练')
     # 改到这
@@ -252,7 +252,7 @@ def run(config):
             best_checkpoint=pth_path
             torch.save(exp_model.state_dict(),pth_path)
         # 根据验证结果，调节学习率
-        scheduler.step(best_metrices)
+        scheduler.step()
         train_logger.info('当前学习率为{}'.format(optimizer.param_groups[0]['lr']))
 
 

@@ -170,13 +170,13 @@ if __name__=='__main__':
     from src.util.util import get_window
 
     config={}
-    yaml_file=['config/data_process/common.yaml','config/dataset/common.yaml',
+    yaml_file=['config/dataset/common.yaml',
                'config/model/render.yaml']
     for a in yaml_file:
         with open(a,'r',encoding='utf8') as f:
             config.update(yaml.safe_load(f))
        
-    dataset=RenderDataset(config,max_len=30)
+    dataset=RenderDataset(config)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=3, 
