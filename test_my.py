@@ -2,6 +2,22 @@
 import os
 from moviepy.editor import VideoFileClip
 import torch
+import pickle
+import zlib
+import numpy as np
+
+
+# test
+if __name__=='__main__':
+    import os
+    import sys
+    path=sys.path[0]
+    sys.path.append(os.path.join(path,'Deep3DFaceRecon_pytorch'))
+
+from src.util.data_process.video_process_util import video_to_3DMM_and_pose
+from scipy.io import loadmat
+
+
 
 
 
@@ -28,16 +44,55 @@ import torch
 # video_dst = '002.mp4'
 # add_mp3(video_src1, video_src2, video_dst)
 
+'''查看改了尺寸后的pkl文件有什么不同不'''
 
-def listToTensor():
-    tensor1=torch.tensor([1,2,3])
-    tensor2=torch.tensor([4,5,6])
-    tensor_list=list()
-    tensor_list.append(tensor1)
-    tensor_list.append(tensor2)
-    final_tensor=torch.stack(tensor_list)  ###
-    print('tensor_list:',tensor_list, '  type:',type(tensor_list))
-    print('final_tensor:',final_tensor, '  type',type(final_tensor))
-    pass
+
+def process_pose(data):
+    """Get pose parameters from mat file
+
+    Returns:
+        pose_params (numpy.ndarray): shape (L_video, 9), angle, translation, crop paramters
+    """
+    mat_dict = data
+
+    np_3dmm = mat_dict["coeff"]
+    angles = np_3dmm[:, 224:227]
+    translations = np_3dmm[:, 254:257]
+
+    np_trans_params = mat_dict["transform_params"]
+    crop = np_trans_params[:, -3:]
+
+    # [len,9]
+    pose_params = np.concatenate((angles, translations, crop), axis=1)
+
+    
+    return np.array(pose_params).tolist()
+
+def process_exp_3DMM(data):
+    data_3DMM=data['coeff']
+
+    # [len,64]
+    face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
+
+
+    return np.array(face3d_exp).tolist()
+
+
 if __name__=='__main__':
-    listToTensor()
+    # video_to_3DMM_and_pose('data')
+    # 加载mat
+    data_crop=loadmat('data/0.mat')
+    data_crop_pose,data_crop_exp=process_pose(data_crop),process_exp_3DMM(data_crop)
+    data_no_crop=loadmat('data/1.mat')
+    data_no_crop_pose,data_no_crop_exp=process_pose(data_no_crop),process_exp_3DMM(data_no_crop)
+
+    # 解压pkl文件
+    with open('data/angry_001.pkl','rb') as f:
+        byte_file=f.read()
+    byte_file=zlib.decompress(byte_file)
+    data_yuan= pickle.loads(byte_file)
+    data_yuan=data_yuan['face_coeff']
+    data_yuan_pose,data_yuan_exp=process_pose(data_yuan),process_exp_3DMM(data_yuan)
+    data_yuan=1
+
+    aaa=1
