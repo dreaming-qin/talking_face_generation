@@ -5,6 +5,8 @@ import torch
 import pickle
 import zlib
 import numpy as np
+import glob
+from tqdm import tqdm
 
 
 # test
@@ -44,55 +46,27 @@ from scipy.io import loadmat
 # video_dst = '002.mp4'
 # add_mp3(video_src1, video_src2, video_dst)
 
-'''查看改了尺寸后的pkl文件有什么不同不'''
 
-
-def process_pose(data):
-    """Get pose parameters from mat file
-
-    Returns:
-        pose_params (numpy.ndarray): shape (L_video, 9), angle, translation, crop paramters
-    """
-    mat_dict = data
-
-    np_3dmm = mat_dict["coeff"]
-    angles = np_3dmm[:, 224:227]
-    translations = np_3dmm[:, 254:257]
-
-    np_trans_params = mat_dict["transform_params"]
-    crop = np_trans_params[:, -3:]
-
-    # [len,9]
-    pose_params = np.concatenate((angles, translations, crop), axis=1)
-
-    
-    return np.array(pose_params).tolist()
-
-def process_exp_3DMM(data):
-    data_3DMM=data['coeff']
-
-    # [len,64]
-    face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
-
-
-    return np.array(face3d_exp).tolist()
-
-
+'''往data中加入path'''
 if __name__=='__main__':
-    # video_to_3DMM_and_pose('data')
-    # 加载mat
-    data_crop=loadmat('data/0.mat')
-    data_crop_pose,data_crop_exp=process_pose(data_crop),process_exp_3DMM(data_crop)
-    data_no_crop=loadmat('data/1.mat')
-    data_no_crop_pose,data_no_crop_exp=process_pose(data_no_crop),process_exp_3DMM(data_no_crop)
-
-    # 解压pkl文件
-    with open('data/angry_001.pkl','rb') as f:
-        byte_file=f.read()
-    byte_file=zlib.decompress(byte_file)
-    data_yuan= pickle.loads(byte_file)
-    data_yuan=data_yuan['face_coeff']
-    data_yuan_pose,data_yuan_exp=process_pose(data_yuan),process_exp_3DMM(data_yuan)
-    data_yuan=1
-
-    aaa=1
+    
+    file_list = glob.glob(f'data2/*/*/*/*.pkl')
+    for file in tqdm(file_list):
+        # 解压pkl文件
+        with open(file,'rb') as f:
+            byte_file=f.read()
+        byte_file=zlib.decompress(byte_file)
+        data= pickle.loads(byte_file)
+        # test
+        str_clip=os.path.basename(file).replace('.pkl','.mp4').split('_')
+        data['path']=f'/workspace/dataset/MEAD/{str_clip[0]}/video/{str_clip[1]}/{str_clip[2]}'+\
+            f'/{str_clip[3]}_{str_clip[4]}/{str_clip[5]}'
+        data.pop('align_video')
+        
+        # 获得最终数据，使用压缩操作
+        save_file=file.replace('data2','data')
+        os.makedirs(os.path.dirname(save_file),exist_ok=True)
+        info = pickle.dumps(data)
+        info=zlib.compress(info)
+        with open(save_file,'wb') as f:
+            f.write(info)

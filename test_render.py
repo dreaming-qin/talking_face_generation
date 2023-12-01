@@ -116,6 +116,7 @@ def generate_video(config):
         fake_video=[]
         # 由于GPU限制，10张10张送
         frame_num=config['frame_num']
+        i=-frame_num
         for i in range(0,len(input_img)-frame_num,frame_num):
             output_dict = render(input_img[i:i+frame_num], driving_src[i:i+frame_num])
             # 得到结果(B,3,H,W)
@@ -198,9 +199,9 @@ if __name__ == '__main__':
             config.update(yaml.safe_load(f))
     
     # 由于GPU限制，得10张10张的往GPU送
-    config['frame_num']=15
+    config['frame_num']=100
     # 设置生成的视频数量最大值
-    config['video_num']=2
+    config['video_num']=1000
 
 
     generate_video(config)

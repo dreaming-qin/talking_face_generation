@@ -33,5 +33,6 @@ log/
 data2/
 temp/
 
+*.tar
 *.log
 *.pyc

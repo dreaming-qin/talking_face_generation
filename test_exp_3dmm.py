@@ -72,13 +72,6 @@ def generate_video(config):
         byte_file=zlib.decompress(byte_file)
         data= pickle.loads(byte_file)
 
-        # test
-        str_clip=os.path.basename(file).replace('.pkl','.mp4').split('_')
-        data['path']=f'/workspace/dataset/MEAD/{str_clip[0]}/video/{str_clip[1]}/{str_clip[2]}'+\
-            f'/{str_clip[3]}_{str_clip[4]}/{str_clip[5]}'
-        # if '/workspace/dataset/MEAD/M027/video/front/contempt/level_3/011.mp4'!=data['path']:
-        #     continue
-
         data=to_device(data,device,config)
 
         # 生成exp 3dmm
