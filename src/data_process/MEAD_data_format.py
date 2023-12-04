@@ -1,4 +1,16 @@
-# 测试 
+
+import glob
+import pickle
+import numpy as np
+import zlib
+from torch.multiprocessing import Pool, set_start_method
+import os
+import random
+import shutil
+from scipy.io import loadmat
+import torch
+
+# test 
 if __name__=='__main__':
     import os
     import sys
@@ -11,17 +23,6 @@ if __name__=='__main__':
 from src.util.data_process.audio_process_util import process_audio
 from src.util.data_process.video_process_util import process_video,video_to_3DMM_and_pose
 from src.util.logger import logger_config
-import glob
-import pickle
-import numpy as np
-import zlib
-from torch.multiprocessing import Pool, set_start_method
-import os
-import random
-import shutil
-from scipy.io import loadmat
-
-
 
 
 
@@ -124,7 +125,6 @@ def merge_data(dir_name):
         # imageio.mimsave('mask.mp4',video_array)
 
 
-
 def merge_data2(dir_name):
     # 获得所有信息后，开始合并所需要的信息
     # 从dormat_data入手
@@ -159,6 +159,54 @@ def merge_data2(dir_name):
         frame=info['face_video'][0]
         if np.sum(frame==0)>3*256*256/4:
             continue
+
+        # 获得最终数据，使用压缩操作
+        save_file=file.replace('data2','data')
+        os.makedirs(os.path.dirname(save_file),exist_ok=True)
+        info = pickle.dumps(info)
+        info=zlib.compress(info)
+        with open(save_file,'wb') as f:
+            f.write(info)
+
+    logger.info('已结束：进程{}任务合并文件夹{}的内容'.format(os.getpid(),dir_name))
+
+
+def merge_data3(dir_name):
+    # 获得所有信息后，开始合并所需要的信息
+    # 从dormat_data入手
+    filenames = glob.glob(f'{dir_name}/*.pkl')
+
+    logger.info('进程{}合并文件夹{}的内容'.format(os.getpid(),dir_name))
+
+    # 存到这
+    for file in filenames:
+        info={}
+        with open(file,'rb') as f:
+            data=f.read()
+        data=zlib.decompress(data)
+        data= pickle.loads(data)
+        info.update(data)
+        info.pop('face_coeff')
+
+        # 更新3dmm数据
+        info['face_coeff']=loadmat(file.replace('.pkl','.mat').replace('data2','video'))
+
+        # 对齐音频数据
+        if len(info['audio_mfcc'])<len(info['face_video']):
+            temp_last=torch.tensor(info['audio_mfcc'][-1]).expand(len(info['face_video'])-len(info['audio_mfcc']),-1,-1)
+            info['audio_mfcc']=np.concatenate((info['audio_mfcc'],temp_last.numpy()))
+        else:
+            info['audio_mfcc']=info['audio_mfcc'][:len(info['face_video'])]
+        if len(info['audio_hugebert'])<2*len(info['face_video']):
+            temp_last=torch.tensor(info['audio_hugebert'][-1]).expand(2*len(info['face_video'])-len(info['audio_hugebert']),-1)
+            info['audio_hugebert']=np.concatenate((info['audio_hugebert'],temp_last.numpy()))
+        else:
+            info['audio_hugebert']=info['audio_hugebert'][:2*len(info['face_video'])]
+
+        # 检验长度对齐
+        assert len(info['face_coeff']['coeff'])==len(info['face_video'])
+        assert len(info['audio_hugebert'])==2*len(info['face_video'])
+        assert len(info['audio_mfcc'])==len(info['face_video'])
 
         # 获得最终数据，使用压缩操作
         save_file=file.replace('data2','data')

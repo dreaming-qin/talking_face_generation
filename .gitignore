@@ -30,9 +30,12 @@ checkpoint/
 result/
 data/
 log/
-data2/
-temp/
-
-*.tar
 *.log
 *.pyc
+
+
+# 暂时
+data2/
+temp/
+video/
+*.tar

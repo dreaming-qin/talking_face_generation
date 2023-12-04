@@ -7,6 +7,8 @@ import zlib
 import numpy as np
 import glob
 from tqdm import tqdm
+import imageio
+import torchvision
 
 
 # test
@@ -49,24 +51,24 @@ from scipy.io import loadmat
 
 '''往data中加入path'''
 if __name__=='__main__':
-    
-    file_list = glob.glob(f'data2/*/*/*/*.pkl')
+    # 创建视频
+    file_list=sorted(glob.glob(f'data2/format_data/*/*/*.pkl'))
     for file in tqdm(file_list):
         # 解压pkl文件
         with open(file,'rb') as f:
             byte_file=f.read()
         byte_file=zlib.decompress(byte_file)
         data= pickle.loads(byte_file)
-        # test
-        str_clip=os.path.basename(file).replace('.pkl','.mp4').split('_')
-        data['path']=f'/workspace/dataset/MEAD/{str_clip[0]}/video/{str_clip[1]}/{str_clip[2]}'+\
-            f'/{str_clip[3]}_{str_clip[4]}/{str_clip[5]}'
-        data.pop('align_video')
-        
-        # 获得最终数据，使用压缩操作
-        save_file=file.replace('data2','data')
+
+        face_video=data['face_video']
+
+        save_file=file.replace('data2','video').replace('.pkl','.mp4')
         os.makedirs(os.path.dirname(save_file),exist_ok=True)
-        info = pickle.dumps(data)
-        info=zlib.compress(info)
-        with open(save_file,'wb') as f:
-            f.write(info)
+
+        # 存结果为视频，需要加上音频
+        reader = imageio.get_reader(data['path'])
+        # 获得fps
+        fps = reader.get_meta_data()['fps']
+        reader.close()
+        # 先把视频存好
+        imageio.mimsave(save_file,face_video,fps=fps)
