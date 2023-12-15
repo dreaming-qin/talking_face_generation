@@ -37,7 +37,7 @@ triple_dis: 5
 
 audio_win_size: 5
 render_win_size: 13
-device_id: [1]
+device_id: [0]
 checkpoint_dir: "checkpoint/exp3DMM"
 result_dir: "result/exp3DMM"
 epoch: 100

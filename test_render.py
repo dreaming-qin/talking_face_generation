@@ -68,8 +68,8 @@ def get_metrices(config):
             f.writelines(line)
 
     # 删除fake和real文件夹
-    remove_file(real_dir)
-    remove_file(fake_dir)
+    # remove_file(real_dir)
+    # remove_file(fake_dir)
 
 @torch.no_grad()
 def generate_video(config):
@@ -178,12 +178,10 @@ def save_video(video,data,save_file):
     torchvision.io.write_video('temp.mp4', ((video+1)/2*255).cpu(), fps=fps)
     
     # 将data['path']的音频嵌入temp.mp4视频中，保存在save_file中
-    video_src1 = VideoFileClip(data['path'])
-    video_src2 = VideoFileClip('temp.mp4')
-    audio = video_src1.audio
-    videoclip2 = video_src2.set_audio(audio)
-    videoclip2.write_videofile(save_file, codec='libx264')
-    
+    command ='ffmpeg -i {} -i {} -loglevel error -c copy -map 0 -map 1:1 -y -shortest {}'.format(
+        'temp.mp4',data['path'],save_file
+    ) 
+    os.system(command)
     # 删除temp.mp4
     remove_file('temp.mp4')
 

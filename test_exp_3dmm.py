@@ -172,10 +172,14 @@ if __name__ == '__main__':
             config.update(yaml.safe_load(f))
     
     # 由于GPU限制，得10张10张的往GPU送
-    config['frame_num']=160
+    config['frame_num']=100
     # 设置生成的视频数量最大值
-    config['video_num']=100000
+    config['video_num']=60
 
 
-    generate_video(config)
+    # generate_video(config)
+
+    # test，获得其它方法的结果
+    config['result_dir']='/workspace/code/talking_face_generation/result/make'
+
     get_metrices(config)
