@@ -37,7 +37,8 @@ def AED_by_dir(predict_video_dir,gt_video_dir,is_get_3dmm=False,is_delete_3dmm_f
         real_exp,_=get_exp_and_pose(real_mat)
 
         # 计算L1距离，获得一个视频的平均APD
-        distance.append(np.abs(fake_exp-real_exp).mean())
+        min_len=min(len(fake_exp),len(real_exp))
+        distance.append(np.abs(fake_exp[:min_len]-real_exp[:min_len]).mean())
 
         # 删除无用文件
         remove_file(fake_mat.replace('.mat','.txt'))

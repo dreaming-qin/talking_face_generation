@@ -178,10 +178,10 @@ if __name__ == '__main__':
     config['video_num']=60
 
 
-    # generate_video(config)
+    generate_video(config)
 
     # test，获得其它方法的结果
-    method=['atvg','eamm','wav2lip_no_pose','make','pc_avs','exp3DMM']
+    method=['make','pc_avs','exp3DMM']
     for b in method:
         config['result_dir']=f'result/{b}'
         get_metrices(config)

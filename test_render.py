@@ -8,6 +8,7 @@ import pickle
 import imageio
 from moviepy.editor import VideoFileClip
 import numpy as np
+import shutil
 
 
 # test
@@ -41,8 +42,8 @@ def get_metrices(config):
     print('获得结果...')
     metrices_list=['AED','APD','F_LMD','LSE-C','LSE-D','M_LMD','SSIM']
     metrices_dict={}
-    metrices_dict['APD']=APD_by_dir(fake_dir,real_dir)
     metrices_dict['AED']=AED_by_dir(fake_dir,real_dir,is_get_3dmm=True,is_delete_3dmm_file=True)
+    metrices_dict['APD']=APD_by_dir(fake_dir,real_dir)
     metrices_dict['F_LMD']=F_LMD_by_dir(fake_dir,real_dir)
     metrices_dict['LSE-C'],metrices_dict['LSE-D'],metrices_dict['real_LSE-C'],metrices_dict['real_LSE-D']=\
         sync_net_by_dir(fake_dir,real_dir)
@@ -177,6 +178,14 @@ def save_video(video,data,save_file):
     reader.close()
     # 先把视频存好
     torchvision.io.write_video('temp.mp4', ((video+1)/2*255).cpu(), fps=fps)
+
+    # 设置帧率为25
+    if fps!=25:
+        shutil.copyfile('temp.mp4','temp2.mp4')
+        cmd='ffmpeg -y -i temp2.mp4 -loglevel error -r 25 temp.mp4'
+        os.system(cmd)
+        os.remove('temp2.mp4')
+
     
     # 将data['path']的音频嵌入temp.mp4视频中，保存在save_file中
     command ='ffmpeg -i {} -i {} -loglevel error -c copy -map 0:0 -map 1:1 -y -shortest {}'.format(
