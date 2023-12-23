@@ -25,6 +25,7 @@ TestResults.xml
 # 我的
 Deep3DFaceRecon_pytorch/
 syncnet_python/
+TDDFA_V2_master/
 BFM/
 checkpoint/
 result/

@@ -17,10 +17,10 @@ from src.util.util import remove_file
 
 
 
-'''AED取值范围[0,正无穷]，越小越好'''
+'''APD取值范围[0,正无穷]，越小越好'''
 
 
-def AED_by_dir(predict_video_dir,gt_video_dir,is_get_3dmm=False,is_delete_3dmm_file=False):
+def APD_by_dir(predict_video_dir,gt_video_dir,is_get_3dmm=False,is_delete_3dmm_file=False):
     '''由于每执行一次模型都要初始化，因此按照dir的形式抓取更有效率
     获得所有文件夹的结果'''
     if is_get_3dmm:
@@ -33,11 +33,15 @@ def AED_by_dir(predict_video_dir,gt_video_dir,is_get_3dmm=False,is_delete_3dmm_f
     distance=[]
     for fake_mat,real_mat in zip(fake_mats,real_mats):
         assert os.path.basename(fake_mat)==os.path.basename(real_mat)
-        fake_exp,_=get_exp_and_pose(fake_mat)
-        real_exp,_=get_exp_and_pose(real_mat)
+        _,fake_pose=get_exp_and_pose(fake_mat)
+        _,real_pose=get_exp_and_pose(real_mat)
+
+        # test
+        # real_pose[0]-=1
+        # real_pose[1]+=1
 
         # 计算L1距离，获得一个视频的平均APD
-        distance.append(np.abs(fake_exp-real_exp).mean())
+        distance.append(np.abs(fake_pose-real_pose).mean())
 
         # 删除无用文件
         remove_file(fake_mat.replace('.mat','.txt'))
@@ -66,6 +70,7 @@ def get_exp_and_pose(mat_file):
     pose_params = np.concatenate((angles, translations), axis=1)
 
     return face3d_exp,pose_params
+    # return face3d_exp,pose_params[:,0:6]
 
 if __name__=='__main__':
 
@@ -73,10 +78,10 @@ if __name__=='__main__':
 
     # test, 以一个视频为单位
     for a in method:
-        with open(f'result/{a}/result/AED.txt','w',encoding='utf8') as f:
+        with open(f'result/{a}/result/APD.txt','w',encoding='utf8') as f:
             
             video_to_3DMM_and_pose(f'result/{a}/result/fake')
-            video_to_3DMM_and_pose(f'result/{a}/result/real')
+            # video_to_3DMM_and_pose(f'result/{a}/result/real')
 
             # 获得信息后，开始比对
             fake_mats=sorted(glob.glob(f'result/{a}/result/fake/*.mat'))
@@ -84,9 +89,10 @@ if __name__=='__main__':
             distance=[]
             for fake_mat,real_mat in zip(fake_mats,real_mats):
                 assert os.path.basename(fake_mat)==os.path.basename(real_mat)
-                fake_exp,_=get_exp_and_pose(fake_mat)
-                real_exp,_=get_exp_and_pose(real_mat)
+                _,fake_pose=get_exp_and_pose(fake_mat)
+                _,real_pose=get_exp_and_pose(real_mat)
 
                 # 计算L1距离，获得一个视频的平均APD
-                temp=np.abs(fake_exp-real_exp).mean()
+                temp=np.abs(fake_pose-real_pose).mean()
+
                 f.write(f'{os.path.basename(fake_mat)}\t{temp}\n')

@@ -5,6 +5,7 @@ import imageio
 from imutils import face_utils
 import os
 import glob
+import matplotlib.pyplot as plt
 
 
 '''M-LMD取值范围[0,正无穷]，越小越好'''
@@ -13,14 +14,23 @@ import glob
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('./checkpoint/shape_predictor_68_face_landmarks.dat')
 
+def scale(mouth_land):
+    # lmd会随着人脸大小会改变，因此进行规范化
+    gt=(50,30)
+    x_scale=gt[0]/mouth_land[6][0]
+    y_scale=gt[1]/mouth_land[9][1]
+    scale=(x_scale+y_scale)/2
+    mouth_land[:,0]=mouth_land[:,0]*scale
+    mouth_land[:,1]=mouth_land[:,1]*scale
+    return mouth_land
 
 def M_LMD(predict_video,gt_video):
     '''输入维度(len,H,W,3)'''
     distance=[]
     for predict,gt in zip(predict_video,gt_video):
         # predict是(H,W,3)
-        predict = cv2.cvtColor(predict,cv2.COLOR_BGR2GRAY) #  将图像转换为灰度图
-        gt = cv2.cvtColor(gt,cv2.COLOR_BGR2GRAY) #  将图像转换为灰度图
+        predict = cv2.cvtColor(predict,cv2.COLOR_RGB2GRAY) #  将图像转换为灰度图
+        gt = cv2.cvtColor(gt,cv2.COLOR_RGB2GRAY) #  将图像转换为灰度图
         
         real_rects = detector(gt, 1)
         fake_rects = detector(predict, 1)
@@ -29,11 +39,21 @@ def M_LMD(predict_video,gt_video):
             continue
 
         # 先获得预测的landmark
-        fake_rect = fake_rects[-1]
+        fake_rect = fake_rects[0]
         fake_mouth_land = get_lips_landmark(predict, fake_rect)
+        fake_mouth_land=scale(fake_mouth_land)
         # 然后获得gt的landmark
-        real_rect = real_rects[-1]
+        real_rect = real_rects[0]
         real_mouth_land = get_lips_landmark(gt, real_rect)
+        real_mouth_land=scale(real_mouth_land)
+
+        # # test，输出图片
+        # plt.plot(fake_mouth_land.T[0], fake_mouth_land.T[1],'x',color='k',alpha=0.5)
+        # plt.plot(real_mouth_land.T[0], real_mouth_land.T[1],'o',color='k',alpha=0.5)
+        # plt.savefig('temp.jpg')
+        # plt.close()
+        # imageio.imsave('gt.jpg',gt)
+        # imageio.imsave('predict.jpg',predict)
 
         dis = (fake_mouth_land-real_mouth_land)**2
         dis = np.sum(dis,axis=1)
@@ -86,4 +106,24 @@ def get_lips_landmark(images, rect):
     return mouth_land
 
 if __name__=='__main__':
-    print(M_LMD_by_path('0.mp4','1.mp4'))
+    # ssim_by_path('0.mp4','1.mp4')
+
+    method=['atvg','eamm','wav2lip_no_pose','make','pc_avs','exp3DMM']
+    # method=['pc_avs','atvg']
+
+    # for a in method:
+    #     with open(f'result/{a}/result/m_lmd.txt','w',encoding='utf8') as f:
+    #         ans=[]
+    #         predict_video_dir=sorted(glob.glob(f'result/{a}/result/fake/*.mp4'))
+    #         gt_video_dir=sorted(glob.glob(f'result/{a}/result/real/*.mp4'))
+    #         for predict_video_file,gt_video_file in zip(predict_video_dir,gt_video_dir):
+    #             temp= M_LMD_by_path(predict_video_file, gt_video_file)
+    #             f.write(f'{os.path.basename(predict_video_file)}\t{temp}\n')
+
+
+    result=[]
+    for a in method:
+        temp= M_LMD_by_dir(f'result/{a}/result/fake', f'result/{a}/result/real')
+        result.append(temp)
+    for a,b in zip(result,method):
+        print(f'{b}:{a}')

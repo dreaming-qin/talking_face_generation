@@ -1,6 +1,9 @@
 import numpy as np
 import glob
 import os
+import cv2
+import imageio
+import matplotlib.pyplot as plt
 
 # test 
 if __name__=='__main__':
@@ -9,68 +12,119 @@ if __name__=='__main__':
     for _ in range(2):
         path=os.path.dirname(path)
     sys.path.append(path)
-    sys.path.append(os.path.join(path,'Deep3DFaceRecon_pytorch'))
+    sys.path.append(os.path.join(path,'TDDFA_V2_master'))
 
-from src.util.data_process.video_process_util import video_to_3DMM_and_pose
-from scipy.io import loadmat
-from src.util.util import remove_file
+from TDDFA_V2_master.demo import get_pose
 
 
 
 '''APD取值范围[0,正无穷]，越小越好'''
 
 
-def APD_by_dir(predict_video_dir,gt_video_dir,is_get_3dmm=False,is_delete_3dmm_file=False):
-    '''由于每执行一次模型都要初始化，因此按照dir的形式抓取更有效率
-    获得所有文件夹的结果'''
-    if is_get_3dmm:
-        video_to_3DMM_and_pose(predict_video_dir)
-        video_to_3DMM_and_pose(gt_video_dir)
+def APD(predict_video,gt_video):
+    '''输入维度(len,H,W,3)'''
+    fake_pose=[]
+    real_pose=[]
+    for predict,gt in zip(predict_video,gt_video):
+        predict = cv2.cvtColor(predict,cv2.COLOR_RGB2BGR)
+        gt = cv2.cvtColor(gt,cv2.COLOR_RGB2BGR) 
+        fake_result=get_pose(predict)
+        real_result=get_pose(gt)
+        if fake_result is None or real_result is None:
+            continue
+        # predict是(H,W,3)
+        fake_pose.append(fake_result)
+        real_pose.append(real_result)
+    fake_pose,real_pose=np.array(fake_pose),np.array(real_pose)
+    # 删除缩放因子s
+    fake_pose=np.delete(fake_pose, 3, axis=1)
+    real_pose=np.delete(real_pose, 3, axis=1)
+    distance=np.abs(fake_pose-real_pose).mean()
+    return distance
 
-    # 获得信息后，开始比对
-    fake_mats=sorted(glob.glob(f'{predict_video_dir}/*.mat'))
-    real_mats=sorted(glob.glob(f'{gt_video_dir}/*.mat'))
-    distance=[]
-    for fake_mat,real_mat in zip(fake_mats,real_mats):
-        assert os.path.basename(fake_mat)==os.path.basename(real_mat)
-        _,fake_pose=get_exp_and_pose(fake_mat)
-        _,real_pose=get_exp_and_pose(real_mat)
+def APD_by_path(predict_video_file,gt_video_file):
+    pre_reader = imageio.get_reader(predict_video_file)
+    predict_video=[im for im in pre_reader]
+    pre_reader.close()
 
-        # test
-        # real_pose[0]-=1
-        # real_pose[1]+=1
+    gt_reader = imageio.get_reader(gt_video_file)
+    gt_video=[im for im in gt_reader]
+    gt_reader.close()
 
-        # 计算L1距离，获得一个视频的平均APD
-        distance.append(np.abs(fake_pose-real_pose).mean())
-
-        # 删除无用文件
-        remove_file(fake_mat.replace('.mat','.txt'))
-        remove_file(real_mat.replace('.mat','.txt'))
-        if is_delete_3dmm_file:
-            remove_file(fake_mat)
-            remove_file(real_mat)
-
-    return sum(distance)/len(distance)
+    return APD(predict_video,gt_video)
 
 
-def get_exp_and_pose(mat_file):
-    fake_data=loadmat(mat_file)
+def APD_by_dir(predict_video_dir,gt_video_dir):
+    ans=[]
+    predict_video_dir=sorted(glob.glob(f'{predict_video_dir}/*.mp4'))
+    gt_video_dir=sorted(glob.glob(f'{gt_video_dir}/*.mp4'))
+    for predict_video_file,gt_video_file in zip(predict_video_dir,gt_video_dir):
+        assert os.path.basename(predict_video_file)==os.path.basename(gt_video_file)
+        temp=APD_by_path(predict_video_file,gt_video_file)
+        if temp!=-1:
+            ans.append(temp)
+    if len(ans)==0:
+        # -1代表不成功
+        return -1
+    average_distance = sum(ans) / len(ans)
+    return average_distance
 
-    data_3DMM=fake_data['coeff']
-    # [len,64]
-    face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
 
-    mat_dict = fake_data
-    np_3dmm = mat_dict["coeff"]
-    angles = np_3dmm[:, 224:227]
-    translations = np_3dmm[:, 254:257]
-    np_trans_params = mat_dict["transform_params"]
-    crop = np_trans_params[:, -3:]
-    # [len,9]
-    pose_params = np.concatenate((angles, translations, crop), axis=1)
-
-    return face3d_exp,pose_params
-    # return face3d_exp,pose_params[:,0:6]
 
 if __name__=='__main__':
-    print(APD_by_dir('temp','temp',is_get_3dmm=True))
+
+    method=['atvg','eamm','wav2lip_no_pose','make','pc_avs','exp3DMM']
+    # method=['atvg','pc_avs']
+
+    # # test, 以一个视频为单位
+    # for a in method:
+    #     with open(f'result/{a}/result/APD.txt','w',encoding='utf8') as f:
+    #         ans=[]
+    #         predict_video_dir=sorted(glob.glob(f'result/{a}/result/fake/*.mp4'))
+    #         gt_video_dir=sorted(glob.glob(f'result/{a}/result/real/*.mp4'))
+    #         for predict_video_file,gt_video_file in zip(predict_video_dir,gt_video_dir):
+    #             temp= APD_by_path(predict_video_file, gt_video_file)
+    #             f.write(f'{os.path.basename(predict_video_file)}\t{temp}\n')
+
+
+    # test，测试整个视频
+    result=[]
+    for a in method:
+        temp= APD_by_dir(f'result/LRW/{a}/result/fake', f'result/LRW/{a}/result/real')
+        result.append(temp)
+    for a,b in zip(result,method):
+        print(f'{b}:{a}')
+
+
+    # test,以一个帧为单位
+    # for a in method:
+    #     with open(f'result/{a}/result/4_APD.txt','w',encoding='utf8') as f:
+    #         ans=[]
+    #         predict_video_file=f'result/{a}/result/fake/4.mp4'
+    #         gt_video_file=f'result/{a}/result/real/4.mp4'
+            
+    #         pre_reader = imageio.get_reader(predict_video_file)
+    #         predict_video=[im for im in pre_reader]
+    #         pre_reader.close()
+
+    #         gt_reader = imageio.get_reader(gt_video_file)
+    #         gt_video=[im for im in gt_reader]
+    #         gt_reader.close()
+
+    #         index=0
+    #         for predict,gt in zip(predict_video,gt_video):
+    #             index+=1
+    #             predict = cv2.cvtColor(predict,cv2.COLOR_RGB2BGR)
+    #             gt = cv2.cvtColor(gt,cv2.COLOR_RGB2BGR)
+    #             if index==16:
+    #                 aaa=1
+    #             fake_pose=get_pose(predict)
+    #             real_pose=get_pose(gt)
+    #             if fake_pose is None or real_pose is None:
+    #                 continue
+    #             fake_pose=np.delete(fake_pose, 3, axis=0)
+    #             real_pose=np.delete(real_pose, 3, axis=0)
+    #             distance=np.abs(fake_pose-real_pose).mean()
+                
+    #             f.write(f'{index}\t{distance}\n')
+

@@ -37,7 +37,7 @@ from scipy.io import loadmat
 '''对齐视频用的在mateittalk的main_end2end.py的crop_image_tem中，其它预处理方法在其getdata()中'''
 
 '''将音频无损的添加到视频中'''
-# cmd ='ffmpeg -i {} -i {} -loglevel error -c copy -map 0:0 -map 1:1 -y -shortest {}'.format(
+# cmd ='ffmpeg -i {} -i {} -loglevel error -c copy -map 0:0 -map 1:1 -y {}'.format(
 #     video,audio,out) 
 
 '''横向合并视频'''

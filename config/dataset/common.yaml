@@ -1,3 +1,3 @@
 mead_root_path: '/workspace/dataset/MEAD'
 voxceleb2_root_path: 'D:/BaiduNetdiskDownload/vox2_test_mp4'
-format_output_path: './data2/format_data'
+format_output_path: 'data2/format_data'

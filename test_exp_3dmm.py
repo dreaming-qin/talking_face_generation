@@ -17,6 +17,7 @@ if __name__=='__main__':
     path=sys.path[0]
     sys.path.append(os.path.join(path,'Deep3DFaceRecon_pytorch'))
     sys.path.append(os.path.join(path,'syncnet_python'))
+    sys.path.append(os.path.join(path,'TDDFA_V2_master'))
 
 
 from src.model.render.render import Render
@@ -172,7 +173,7 @@ if __name__ == '__main__':
             config.update(yaml.safe_load(f))
     
     # 由于GPU限制，得10张10张的往GPU送
-    config['frame_num']=100
+    config['frame_num']=50
     # 设置生成的视频数量最大值
     config['video_num']=60
 
@@ -180,6 +181,7 @@ if __name__ == '__main__':
     # generate_video(config)
 
     # test，获得其它方法的结果
-    config['result_dir']='/workspace/code/talking_face_generation/result/make'
-
-    get_metrices(config)
+    method=['atvg','eamm','wav2lip_no_pose','make','pc_avs','exp3DMM']
+    for b in method:
+        config['result_dir']=f'result/{b}'
+        get_metrices(config)
