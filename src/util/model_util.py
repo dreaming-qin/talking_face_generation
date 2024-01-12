@@ -12,3 +12,12 @@ def freeze_params(model):
 def unfreeze_params(model):
      for param in model.parameters():
         param.requires_grad = True
+
+def cnt_params(model):
+    temp=0
+    lst=[]
+    for name,para in model.named_parameters():
+        lst.append((name,para.nelement()))
+        temp+=para.nelement()
+    return temp,lst
+

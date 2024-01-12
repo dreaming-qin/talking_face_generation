@@ -28,9 +28,7 @@ class Exp3DMMLoss(nn.Module):
         self.device=device
         self.mouth_weight=config['mouth_weight']
         self.exp_weight=config['exp_weight']
-        self.triple_weight=config['triple_weight']
         self.rec_weight=config['rec_weight']
-        self.distance=config['triple_dis']
 
 
         self.mse_loss=nn.MSELoss()
@@ -47,18 +45,13 @@ class Exp3DMMLoss(nn.Module):
         self.key_exp_base = exp_base.reshape([-1,3,64])[key_points, :, :].reshape([-1,64]).to(self.device)
 
 
-    def forward(self,exp,pos_exp,neg_exp,
-                style,pos_style,neg_style,
-                video,pos_video,neg_video,
-                data):
+    def forward(self,exp,video,data):
         r'''exp形状(B,win,64)
-        style形状(B,dim)
         video形状(B,3,H,W)
         '''
         # 对于唇部和表情Loss，其中一部分的Loss都需要将3DMM转为landmark，然后比较landmaark
-        type_list=['','neg_','pos_']
-        predict={'exp':exp,'neg_exp':neg_exp,'pos_exp':pos_exp,
-                 'video':video,'neg_video':neg_video,'pos_video':pos_video}
+        type_list=['']
+        predict={'exp':exp,'video':video}
         loss_mouth=0
         loss_exp=0
         rec_loss=0
@@ -88,11 +81,8 @@ class Exp3DMMLoss(nn.Module):
             # 重建loss
             rec_loss+=self.rec_weight*self.render_loss.api_forward_for_exp_3dmm(
                 predict[f'{type}video'],data[f'{type}gt_video'])
-        # 计算三元对loss
-        triple_loss=self.triple_weight*self.relu(self.mse_loss(style,pos_style)-
-                               self.mse_loss(style,neg_style)+self.distance)
     
-        return loss_mouth+loss_exp+triple_loss+rec_loss
+        return loss_mouth+loss_exp+rec_loss
     
 
     def get_audio_and_mouth_clip(self,mouth_lm3d,mel,batch_size=1024):
@@ -172,7 +162,4 @@ if __name__=='__main__':
     for data in dataloader:
         for key,value in data.items():
             data[key]=value.to(device)
-        ccc=loss_fun(data['gt_3dmm'],data['pos_gt_3dmm'],data['neg_gt_3dmm'],
-                     torch.ones(2),torch.ones(2),torch.ones(2),
-                     data['gt_video'],data['pos_gt_video'],data['neg_gt_video'],
-                     data)
+        ccc=loss_fun(data['gt_3dmm'],data['gt_video'],data)

@@ -20,6 +20,7 @@ if __name__=='__main__':
 
 from src.util.data_process.video_process_util import video_to_3DMM_and_pose
 from scipy.io import loadmat
+from src.model.syncNet.sync_net import SyncNet
 
 
 
@@ -37,7 +38,7 @@ from scipy.io import loadmat
 '''对齐视频用的在mateittalk的main_end2end.py的crop_image_tem中，其它预处理方法在其getdata()中'''
 
 '''将音频无损的添加到视频中'''
-# cmd ='ffmpeg -i {} -i {} -loglevel error -c copy -map 0:0 -map 1:1 -y {}'.format(
+# cmd ='ffmpeg -i {} -i {} -loglevel error -c copy -map 0:0 -map 1:1 -y -shortest {}'.format(
 #     video,audio,out) 
 
 '''横向合并视频'''
@@ -62,24 +63,10 @@ from scipy.io import loadmat
 
 '''往data中加入path'''
 if __name__=='__main__':
-    # 创建视频
-    file_list=sorted(glob.glob(f'data2/format_data/*/*/*.pkl'))
-    for file in tqdm(file_list):
-        # 解压pkl文件
-        with open(file,'rb') as f:
-            byte_file=f.read()
-        byte_file=zlib.decompress(byte_file)
-        data= pickle.loads(byte_file)
-
-        face_video=data['face_video']
-
-        save_file=file.replace('data2','video').replace('.pkl','.mp4')
-        os.makedirs(os.path.dirname(save_file),exist_ok=True)
-
-        # 存结果为视频，需要加上音频
-        reader = imageio.get_reader(data['path'])
-        # 获得fps
-        fps = reader.get_meta_data()['fps']
-        reader.close()
-        # 先把视频存好
-        imageio.mimsave(save_file,face_video,fps=fps)
+    state_dict=torch.load("checkpoint/syncNet/model_ckpt_steps_40000.ckpt",map_location=torch.device('cpu'))
+    model=state_dict['state_dict']['model']
+    ans={}
+    for key,value in model.items():
+        ans[f'module.{key}']=value
+    torch.save(ans,'temp.pth')
+    a=1

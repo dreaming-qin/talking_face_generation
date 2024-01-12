@@ -40,27 +40,13 @@ def eval(exp_model,render,dataloader,checkpoint=None):
         # 把数据放到device中
         for key,value in data.items():
             data[key]=value.to(next(render.parameters()).device)
-        # 样本的
-        result,_=exp_model(data['style_clip'],data['audio'],data['mask'])
-        drving_src=torch.cat((result,data['pose']),dim=2).permute(0,2,1)
+
+        exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+        drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
         imgs = render(data['img'],drving_src )['fake_image']
-        # 正样本的
-        pos_result,_=exp_model(data['pos_style_clip'],data['pos_audio'],data['pos_mask'])
-        pos_drving_src=torch.cat((pos_result,data['pos_pose']),dim=2).permute(0,2,1)
-        pos_imgs = render(data['pos_img'],pos_drving_src )['fake_image']
-        # 负样本的
-        neg_result,_=exp_model(data['neg_style_clip'],data['neg_audio'],data['neg_mask'])
-        neg_drving_src=torch.cat((neg_result,data['neg_pose']),dim=2).permute(0,2,1)
-        neg_imgs = render(data['neg_img'],neg_drving_src )['fake_image']
 
         temp=eval_ssim(((imgs.permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8),
                         ((data['gt_video'].permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8))
-        ans.append(temp)
-        temp=eval_ssim(((pos_imgs.permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8),
-                        ((data['pos_gt_video'].permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8))
-        ans.append(temp)
-        temp=eval_ssim(((neg_imgs.permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8),
-                        ((data['neg_gt_video'].permute(0,2,3,1).cpu().numpy()+1)/2*255).astype(np.uint8))
         ans.append(temp)
 
     exp_model.train()
@@ -81,28 +67,20 @@ def save_result(exp_model,render,dataloader,save_dir,save_video_num=1):
         # 把数据放到device中
         for key,value in data.items():
             data[key]=value.to(next(render.parameters()).device)
-
-        # 正样本的
-        pos_result,_=exp_model(data['pos_style_clip'],data['pos_audio'],data['pos_mask'])
-        pos_drving_src=torch.cat((pos_result,data['pos_pose']),dim=2).permute(0,2,1)
-        pos_imgs = render(data['pos_img'],pos_drving_src )['fake_image']
-        # 负样本的
-        neg_result,_=exp_model(data['neg_style_clip'],data['neg_audio'],data['neg_mask'])
-        neg_drving_src=torch.cat((neg_result,data['neg_pose']),dim=2).permute(0,2,1)
-        neg_imgs = render(data['neg_img'],neg_drving_src )['fake_image']
-        # 样本的
-        result,_=exp_model(data['style_clip'],data['audio'],data['mask'])
-        drving_src=torch.cat((result,data['pose']),dim=2).permute(0,2,1)
+        
+        exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+        drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
         imgs = render(data['img'],drving_src )['fake_image']
+
     
         # 输出为视频，顺序是（目标，源图片，生成图片）
-        real_video= torch.cat((data['pos_gt_video'],data['neg_gt_video'],data['gt_video']))
+        real_video= data['gt_video']
         # [len,H,W,3]
         real_video=real_video.reshape(-1,3,256,256).permute(0,2,3,1)
         # [len,H,W,3]
-        src_imgs= torch.cat((data['pos_img'],data['neg_img'],data['img']))
+        src_imgs= data['img']
         src_imgs=src_imgs.permute(0,2,3,1)
-        fake= torch.cat((pos_imgs,neg_imgs,imgs))
+        fake=imgs
         fake=fake.reshape(-1,3,256,256).permute(0,2,3,1)
         # [len,H,3*W,3]
         video=torch.cat((real_video,src_imgs,fake),dim=2)
@@ -132,10 +110,10 @@ def run(config):
     train_dataset=Exp3DMMdataset(config,type='train',frame_num=1)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=6, 
+        batch_size=1, 
         shuffle=True,
         drop_last=False,
-        num_workers=3,
+        num_workers=1,
         collate_fn=train_dataset.collater
     )     
     # 验证集
@@ -145,7 +123,7 @@ def run(config):
         batch_size=5, 
         shuffle=True,
         drop_last=False,
-        num_workers=2,
+        num_workers=1,
         collate_fn=eval_dataset.collater
     )     
     # 测试集
@@ -155,7 +133,7 @@ def run(config):
         batch_size=5, 
         shuffle=True,
         drop_last=False,
-        num_workers=2,
+        num_workers=1,
         collate_fn=test_dataset.collater
     )     
 
@@ -177,7 +155,8 @@ def run(config):
     exp_model= torch.nn.DataParallel(exp_model, device_ids=config['device_id'])
     if 'exp_3dmm_pre_train' in config:
         train_logger.info('exp 3dmm模块加载预训练模型{}'.format(config['exp_3dmm_pre_train']))
-        exp_model.load_state_dict(torch.load(config['exp_3dmm_pre_train']))
+        state_dict=torch.load(config['exp_3dmm_pre_train'],map_location=torch.device('cpu'))
+        exp_model.load_state_dict(state_dict)
 
     
     # 验证
@@ -198,7 +177,6 @@ def run(config):
     best_checkpoint=None
 
     train_logger.info('准备完成，开始训练')
-    # 改到这
     # 开始训练
     for epoch in range(config['epoch']):
         epoch_loss=0
@@ -208,29 +186,16 @@ def run(config):
                 data[key]=value.to(device)
 
             # test
-            # imageio.mimsave('temp_exp3dmm2.mp4',transformer_video[0].cpu().numpy())
-            # transformer_video=np.load('temp.npy')
-            # transformer_video=torch.tensor(transformer_video).to(device).unsqueeze(0)
-            # s=time.time()
+            # imageio.mimsave('test.mp4',data['video'][0].cpu().numpy())
 
-            # 样本的
-            result,style_code=exp_model(data['style_clip'],data['audio'],data['mask'])
-            drving_src=torch.cat((result,data['pose']),dim=2).permute(0,2,1)
+
+            exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+            drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
             imgs = render(data['img'],drving_src )['fake_image']
-            # 正样本的
-            pos_result,pos_style_code=exp_model(data['pos_style_clip'],data['pos_audio'],data['pos_mask'])
-            pos_drving_src=torch.cat((pos_result,data['pos_pose']),dim=2).permute(0,2,1)
-            pos_imgs = render(data['pos_img'],pos_drving_src )['fake_image']
-            # 负样本的
-            neg_result,neg_style_code=exp_model(data['neg_style_clip'],data['neg_audio'],data['neg_mask'])
-            neg_drving_src=torch.cat((neg_result,data['neg_pose']),dim=2).permute(0,2,1)
-            neg_imgs = render(data['neg_img'],neg_drving_src )['fake_image']
+
 
             # 计算loss
-            loss=loss_function(result,pos_result,neg_result,
-                               style_code,pos_style_code,neg_style_code,
-                               imgs,pos_imgs,neg_imgs,
-                               data)
+            loss=loss_function(exp_result,imgs,data)
 
             epoch_loss+=loss.item()
             # 反向传播

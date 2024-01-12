@@ -9,6 +9,8 @@ import os
 import copy
 import time
 
+import imageio
+
 
 
 # 测试代码
@@ -78,22 +80,8 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         sample=self.filenames[idx]
-        emo=os.path.basename(sample)[:os.path.basename(sample).rfind('_')]
-        # 随机选择正样本
-        pos_index=random.choice(range(0,len(self.emo_dict[emo])))
-        pos_file=self.emo_dict[emo][pos_index]
-        # 随机选择负样本
-        while True:
-            temp = random.choice(list(self.emo_dict))
-            if temp != emo:
-                emo=temp
-                break
-        neg_index=random.choice(range(0,len(self.emo_dict[emo])))
-        neg_file=self.emo_dict[emo][neg_index]
         out={}
         out.update(self.get_data(sample,type=''))
-        out.update(self.get_data(neg_file,type='neg_'))
-        out.update(self.get_data(pos_file,type='pos_'))
         return out
 
     def get_data(self,file,type):
@@ -128,15 +116,34 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         out[f'{type}audio']=torch.tensor(audio_data[0]).float()
         # out['audio_hubert']=torch.tensor(audio_data[1]).float()
 
-        # 获得style clip，使用同一个人，相同情感的情况下的作为style clip
-        face3d_exp=data['face_coeff']['coeff'][:, 80:144]
-        style_clip, pad_mask = get_video_style_clip(face3d_exp, style_max_len=256, start_idx=0)
-        # (frame,max_len,64)
-        out[f'{type}style_clip']=style_clip.float().expand(self.frame_num,-1,-1)
-        # (frame,max_len)
-        out[f'{type}mask']=pad_mask.expand(self.frame_num,-1)
-        
+        # 获得输入视频
+        mask_video=self.process_mask_video(data)
+        out[f'{type}video']=torch.tensor(mask_video).float()
         return out
+
+    def process_mask_video(self,data):
+        frame_index_list=copy.deepcopy(data['frame_index'])
+        for temp in frame_index_list:
+            for _ in range(self.audio_win_size+self.exp_3dmm_win_size):
+                temp.append(min(temp[-1]+1,len(data['face_video'])-1))
+                temp.insert(0,max(temp[0]-1,0))
+
+        mask_video=[]
+        for index_list in frame_index_list:
+            temp=[]
+            for index in index_list:
+                img=data['face_video'][index].copy()
+                mask=data['mouth_mask'][index]
+                noise=np.random.randint(0,256,(mask[1]-mask[0],mask[3]-mask[2],3))
+                img[mask[0]:mask[1],mask[2]:mask[3]]=noise
+                temp.append(img)
+                # test
+                # imageio.imsave('temp1.jpg',data['face_video'][index])
+                # imageio.imsave('temp2.jpg',img)
+            mask_video.append(temp)
+        
+        return np.array(mask_video)
+
 
     def process_video(self,data):
         video_data=data['face_video']
@@ -148,6 +155,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         for i in range(self.frame_num):
             target.append(video_data[temp_index[i]])
             src.append(video_data[temp_index[(i+1)%self.frame_num]])
+            
         if self.frame_num==1:
             src=[video_data[random.choice(range(len(video_data)))]]
 
@@ -232,8 +240,8 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
 
     def collater(self, samples):
         # 对齐数据
-        triple_list=['','pos_','neg_']
-        data_key=['gt_video','img','gt_3dmm','id_3dmm','audio','style_clip','mask','pose']
+        triple_list=['']
+        data_key=['gt_video','img','gt_3dmm','id_3dmm','audio','video','pose']
         data={}
         for key in data_key:
             for triple in triple_list:
@@ -254,13 +262,13 @@ if __name__=='__main__':
         with open(a,'r',encoding='utf8') as f:
             config.update(yaml.safe_load(f))
        
-    dataset=Exp3DMMdataset(config,type='train',frame_num=1)
+    dataset=Exp3DMMdataset(config,type='train',frame_num=2)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=2, 
         shuffle=True,
         drop_last=False,
-        num_workers=1,
+        num_workers=0,
         collate_fn=dataset.collater
     )     
     for data in dataloader:

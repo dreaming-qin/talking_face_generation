@@ -15,16 +15,12 @@ fusion:
   output_dim: 64
 
 video_encoder:
-  d_model: 256
-  nhead: 8
-  num_encoder_layers: 3
-  dim_feedforward: 1024
-  dropout: 0.1
-  activation: "relu"
-  normalize_before: False
-  pos_embed_len: 256
-  input_dim: 64
-  aggregate_method: "self_attention_pooling"
+  block_expansion: 24
+  num_channels: 3
+  max_features: 256
+  num_blocks: 4
+  # 改变这个可以改变图片的输入尺寸
+  scale_factor: 0.5
 
 # loss函数的
 mouth_weight: [5,5]
@@ -32,8 +28,6 @@ exp_weight: [2,2]
 rec_weight: 10
 # rec_low_weight中，第一项是L1 loss，第二项是ssim
 rec_low_weight: [0.5,0.5]
-triple_weight: 1
-triple_dis: 5
 
 audio_win_size: 5
 render_win_size: 13
@@ -45,5 +39,5 @@ lr: 0.0001
 # 在lr_scheduler_step后改变学习率
 lr_scheduler_step: [30]
 
-exp_3dmm_pre_train: "checkpoint/exp3DMM/0/epoch_30_metrices_0.8833696047625232.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_19_metrices_0.8666886615697682.pth"
 render_pre_train: "checkpoint/render/0/edit_epoch_32_metrices_0.8905495066160443.pth"

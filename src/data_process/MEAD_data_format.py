@@ -250,10 +250,10 @@ if __name__=='__main__':
     # dir_list=dir_list[index:]
 
     # test
-    # dir_list=['data']
-    # for file_list in dir_list:
-    #     # format_data_by_cuda(file_list)
-    #     format_data_no_use_cuda(file_list)
+    dir_list=['data']
+    for file_list in dir_list:
+        format_data_by_cuda(file_list)
+        format_data_no_use_cuda(file_list)
     # dir_list=['data2/format_data/train/0']
     # merge_data2(file_list)
 

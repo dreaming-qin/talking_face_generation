@@ -17,6 +17,7 @@ from src.model.exp3DMM.audio_encoder import AudioEncoder
 from src.model.exp3DMM.video_encoder import VideoEncoder
 from src.model.exp3DMM.fusion import Fusion
 from src.util.util import get_window
+from src.util.model_util import cnt_params
 
 
 class Exp3DMM(nn.Module):
@@ -30,43 +31,36 @@ class Exp3DMM(nn.Module):
         self.fusion_module=Fusion(**cfg['fusion'])
 
         # test
-        # temp=0
-        # lst=[]
-        # for name,para in self.audio_encoder.named_parameters():
-        #     lst.append((name,para.nelement()))
-        #     temp+=para.nelement()
-        # print(f"audio_encoder total paras number: {temp}")
-        # temp=0
-        # lst=[]
-        # for name,para in self.video_encoder.named_parameters():
-        #     lst.append((name,para.nelement()))
-        #     temp+=para.nelement()
-        # print(f"video_encoder total paras number: {temp}")
-        # temp=0
-        # lst=[]
-        # for name,para in self.fusion_module.named_parameters():
-        #     lst.append((name,para.nelement()))
-        #     temp+=para.nelement()
-        # print(f"fusion_module total paras number: {temp}")
+        audio_cnt,_=cnt_params(self.audio_encoder)
+        print(f"audio_encoder total paras number: {audio_cnt}")
+        video_cnt,_=cnt_params(self.video_encoder)
+        print(f"video_encoder total paras number: {video_cnt}")
+        fusion_cnt,_=cnt_params(self.fusion_module)
+        print(f"fusion_module total paras number: {fusion_cnt}")
         
         self.win_size=cfg['audio_win_size']
 
-    def forward(self, exp_3DMM, audio_MFCC, pad_mask=None):
-        """exp_3DMM输入维度[b,max_len,64]
-        audio_MFCC输入维度[B,win,28,mfcc dim]
+    def forward(self, transformer_video, audio_MFCC):
+        """transformer_video输入维度[b,len,3,H,W]
+        audio_MFCC输入维度[B,LEN,28,mfcc dim]
         输出维度[B,len,3dmm dim]
         """
-        # [B,win,dim]
+        # [B,len,audio dim]
         audio_feature=self.audio_encoder(audio_MFCC)
-        # [b,dim]
-        video_feature=self.video_encoder(exp_3DMM, pad_mask)
-        # [B,win1,win2,dim]
+        B,L,H,W,C=transformer_video.shape
+        transformer_video=transformer_video.reshape(-1,H,W,C)
+        video_feature=self.video_encoder(transformer_video)
+        # [B,Len,video dim]
+        video_feature=video_feature.reshape(B,L,-1)
+        # [B,len,win_size,audio dim]
         audio_feature=get_window(audio_feature,self.win_size)
         audio_feature=audio_feature[:,self.win_size:-self.win_size]
-        # [B,win,64]
+        # [B,len,win_size,video dim]
+        video_feature=get_window(video_feature,self.win_size)
+        video_feature=video_feature[:,self.win_size:-self.win_size]
         exp3DMM=self.fusion_module(audio_feature,video_feature)
-        return exp3DMM,video_feature
-
+        return exp3DMM
+    
 # 测试代码
 if __name__=='__main__':
     import os,sys
@@ -86,7 +80,7 @@ if __name__=='__main__':
         batch_size=1, 
         shuffle=True,
         drop_last=False,
-        num_workers=1,
+        num_workers=0,
         collate_fn=dataset.collater
     )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -97,8 +91,7 @@ if __name__=='__main__':
             for key,value in data.items():
                 data[key]=value.to(device)
             
-            exp=data['style_clip']
+            exp=data['video'].permute(0,1,4,2,3)
             audio=data['audio']
-            pad_mask=data['mask']
-            result=model(exp,audio,pad_mask)
+            result=model(exp,audio)
             a=1

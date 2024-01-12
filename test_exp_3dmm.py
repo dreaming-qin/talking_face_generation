@@ -76,8 +76,8 @@ def generate_video(config):
         data=to_device(data,device,config)
 
         # 生成exp 3dmm
-        result,_=exp_model(data['style_clip'],data['audio'],data['mask'])
-        driving_src=torch.cat((result,data['pose']),dim=2)
+        exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+        driving_src=torch.cat((exp_result,data['pose']),dim=2)
         driving_src=get_window(driving_src,config['render_win_size'])
         # (len,dim,win)
         driving_src=driving_src.squeeze().permute(0,2,1)
@@ -130,6 +130,14 @@ def to_device(data,device,config):
     temp_first=ans['audio'][0].expand(config['audio_win_size'],-1,-1)
     temp_last=ans['audio'][-1].expand(config['audio_win_size'],-1,-1)
     ans['audio']=torch.cat((temp_first,ans['audio'],temp_last))
+
+    
+    # 获得输入video
+    ans['video']=torch.tensor((data['face_video']/255*2)-1).float().to(device)
+    # 因为video窗口问题，需要扩展
+    temp_first=ans['video'][0].expand(config['audio_win_size'],-1,-1,-1)
+    temp_last=ans['video'][-1].expand(config['audio_win_size'],-1,-1,-1)
+    ans['video']=torch.cat((temp_first,ans['video'],temp_last))
     
     # pose信息获得
     mat_dict = data['face_coeff']
@@ -142,14 +150,6 @@ def to_device(data,device,config):
     pose_params = np.concatenate((angles, translations, crop), axis=1)
     ans['pose']=torch.tensor(pose_params).float().to(device)
 
-    # 获得style clip和mask
-    data_3DMM=data['face_coeff']['coeff']
-    face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
-    style_clip, pad_mask = get_video_style_clip(face3d_exp, style_max_len=256, start_idx=0)
-    # (len,max_len,64)
-    ans['style_clip']=style_clip.float()
-    # (len,max_len)
-    ans['mask']=pad_mask
 
     # 最后的一些处理
     for key,value in ans.items():
@@ -173,7 +173,7 @@ if __name__ == '__main__':
             config.update(yaml.safe_load(f))
     
     # 由于GPU限制，得10张10张的往GPU送
-    config['frame_num']=50
+    config['frame_num']=10
     # 设置生成的视频数量最大值
     config['video_num']=60
 
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     generate_video(config)
 
     # test，获得其它方法的结果
-    method=['make','pc_avs','exp3DMM']
-    for b in method:
-        config['result_dir']=f'result/{b}'
-        get_metrices(config)
+    # method=['make','pc_avs','exp3DMM']
+    # for b in method:
+    #     config['result_dir']=f'result/{b}'
+    #     get_metrices(config)
