@@ -39,6 +39,7 @@ def process_video(video_dir):
 
     return
 
+
 def __process_video__(video_path):
     '''对视频进行预处理，返回transformer后的numpy数组
     只能对一个视频处理的方法
@@ -163,6 +164,7 @@ def get_face_image(driving_video):
 
     return video_array,mouth_mask
 
+
 def deal_mouth_mask(mouth_mask):
     '''mouth mask中有些无法探测，在这里补齐'''
     # 先补齐前面的
@@ -205,6 +207,7 @@ def deal_mouth_mask(mouth_mask):
                 temp=temp.tolist()
                 mouth_mask[j]+=temp
     return np.around(mouth_mask).astype(np.int16)
+
 
 def get_transformed_image(driving_video, config):
     video_array = np.array(driving_video)

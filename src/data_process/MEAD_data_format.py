@@ -9,6 +9,7 @@ import random
 import shutil
 from scipy.io import loadmat
 import torch
+import imageio
 
 # test 
 if __name__=='__main__':
@@ -28,23 +29,34 @@ from src.util.logger import logger_config
 
 logger = logger_config(log_path='data_process.log', logging_name='data process log')
 
-def format_data_by_cuda(dir_name):
+def format_data(dir_name):
     # 先调用两个方法，获得video和audio的数据
     global logger
     logger.info('进程{}处理文件夹{}的内容'.format(os.getpid(),dir_name))
 
-    video_to_3DMM_and_pose(dir_name)
-    process_audio(dir_name)
-    
-    logger.info('已结束：进程{}任务处理文件夹{}的内容'.format(os.getpid(),dir_name))
-
-
-def format_data_no_use_cuda(dir_name):
-    # 先调用两个方法，获得video和audio的数据
-    global logger
-    logger.info('进程{}处理文件夹{}的内容'.format(os.getpid(),dir_name))
     process_video(dir_name)
 
+    os.makedirs(f'{dir_name}/temp',exist_ok=True)
+    # 从process_video方法中获得的裁剪面部结果生成视频，从这个视频中获得3dmm
+    video_list = sorted(glob.glob(f'{dir_name}/*.mp4'))
+    for video_path in video_list:
+        with open(video_path.replace('.mp4','_temp1.pkl'),'rb') as f:
+            info= pickle.load(f)
+        face_video=info['face_video']
+        imageio.mimsave(f'{dir_name}/temp/{os.path.basename(video_path)}',face_video)
+    # 获得3dmm
+    video_to_3DMM_and_pose(f'{dir_name}/temp')
+    # 将结果搬回原文件夹中
+    for video_path in video_list:
+        shutil.move('{}/temp/{}'.format(dir_name,os.path.basename(video_path).replace('.mp4','.txt')),
+                    video_path.replace('.mp4','.txt'))
+        shutil.move('{}/temp/{}'.format(dir_name,os.path.basename(video_path).replace('.mp4','.mat')),
+                    video_path.replace('.mp4','.mat'))
+    # 删除temp文件夹
+    shutil.rmtree(f'{dir_name}/temp')
+
+    process_audio(dir_name)
+    
     logger.info('已结束：进程{}任务处理文件夹{}的内容'.format(os.getpid(),dir_name))
 
 
@@ -66,8 +78,8 @@ def merge_data(dir_name):
             info =  pickle.dumps(info)
             f.write(info)
         # 完了之后，删除没有必要的数据
-        os.remove(video_path.replace('.mp4','.mat'))
         os.remove(video_path.replace('.mp4','_temp1.pkl'))
+        os.remove(video_path.replace('.mp4','.mat'))
         os.remove(video_path.replace('.mp4','.txt'))
     
 
@@ -81,34 +93,42 @@ def merge_data(dir_name):
             temp = pickle.load(f)
         info.update(temp)
 
+        # 没有视频信息的，直接弃用
+        frame=info['face_video'][0]
+        if np.sum(frame==0)>3*256*256/4:
+            continue
 
-        # 再获得音频的数据
+        # 获得音频的数据
         with open(video_path.replace('.mp4','_audio.pkl'),'rb') as f:
             temp = pickle.load(f)
         info['audio_mfcc']=temp['input_audio_mfcc']
         info['audio_hugebert']=temp['syncNet_audio']
+
+        # 对齐音频数据
+        if len(info['audio_mfcc'])<len(info['face_video']):
+            temp_last=torch.tensor(info['audio_mfcc'][-1]).expand(len(info['face_video'])-len(info['audio_mfcc']),-1,-1)
+            info['audio_mfcc']=np.concatenate((info['audio_mfcc'],temp_last.numpy()))
+        else:
+            info['audio_mfcc']=info['audio_mfcc'][:len(info['face_video'])]
+        if len(info['audio_hugebert'])<2*len(info['face_video']):
+            temp_last=torch.tensor(info['audio_hugebert'][-1]).expand(2*len(info['face_video'])-len(info['audio_hugebert']),-1)
+            info['audio_hugebert']=np.concatenate((info['audio_hugebert'],temp_last.numpy()))
+        else:
+            info['audio_hugebert']=info['audio_hugebert'][:2*len(info['face_video'])]
+        # 检验长度对齐
+        assert len(info['face_coeff']['coeff'])==len(info['face_video'])
+        assert len(info['audio_hugebert'])==2*len(info['face_video'])
+        assert len(info['audio_mfcc'])==len(info['face_video'])
 
         # 获得最终数据，使用压缩操作
         info = pickle.dumps(info)
         info=zlib.compress(info)
         with open(video_path.replace('.mp4','.pkl'),'wb') as f:
             f.write(info)
-        # # test,解压测试
-        # with open(video_path.replace('.mp4','_temp.pkl'),'rb') as f:
-        #     a=f.read()
-        # a=zlib.decompress(a)
-        # a= pickle.loads(a)
-
+    
         # 完了之后，删除没有必要的数据
         os.remove(video_path.replace('.mp4','_video.pkl'))
         os.remove(video_path.replace('.mp4','_audio.pkl'))
-
-        # 有些没有视频信息的，需要删除
-        info=zlib.decompress(info)
-        info =  pickle.loads(info)
-        frame=info['face_video'][0]
-        if np.sum(frame==0)>3*256*256/4:
-            os.remove(video_path.replace('.mp4','.pkl'))
         
         # test，测试遮罩效果
         # import imageio
@@ -123,102 +143,6 @@ def merge_data(dir_name):
         #     temp.append(img)
         # video_array=np.array(temp)
         # imageio.mimsave('mask.mp4',video_array)
-
-
-def merge_data2(dir_name):
-    # 获得所有信息后，开始合并所需要的信息
-    # 从dormat_data入手
-    filenames = glob.glob(f'{dir_name}/*.pkl')
-
-    logger.info('进程{}合并文件夹{}的内容'.format(os.getpid(),dir_name))
-
-    # 存到这
-    for file in filenames:
-        info={}
-        with open(file,'rb') as f:
-            data=f.read()
-        data=zlib.decompress(data)
-        data= pickle.loads(data)
-        info.update(data)
-        info.pop('frame_index')
-        info.pop('align_video')
-
-        # 再从视频中拿东西
-        video_path=data['path']
-        if not os.path.exists(video_path.replace('.mp4','_temp1.pkl')):
-            continue
-        with open(video_path.replace('.mp4','_temp1.pkl'),'rb') as f:
-            process_video= pickle.load(f)
-        info['face_video']=process_video['face_video']
-        info['mouth_mask']=process_video['mouth_mask']
-        # 完了之后，删除没有必要的数据
-        os.remove(video_path.replace('.mp4','_temp1.pkl'))
-
-        
-        # 没有视频信息的，直接弃用
-        frame=info['face_video'][0]
-        if np.sum(frame==0)>3*256*256/4:
-            continue
-
-        # 获得最终数据，使用压缩操作
-        save_file=file.replace('data2','data')
-        os.makedirs(os.path.dirname(save_file),exist_ok=True)
-        info = pickle.dumps(info)
-        info=zlib.compress(info)
-        with open(save_file,'wb') as f:
-            f.write(info)
-
-    logger.info('已结束：进程{}任务合并文件夹{}的内容'.format(os.getpid(),dir_name))
-
-
-def merge_data3(dir_name):
-    # 获得所有信息后，开始合并所需要的信息
-    # 从dormat_data入手
-    filenames = glob.glob(f'{dir_name}/*.pkl')
-
-    logger.info('进程{}合并文件夹{}的内容'.format(os.getpid(),dir_name))
-
-    # 存到这
-    for file in filenames:
-        info={}
-        with open(file,'rb') as f:
-            data=f.read()
-        data=zlib.decompress(data)
-        data= pickle.loads(data)
-        info.update(data)
-        info.pop('face_coeff')
-
-        # 更新3dmm数据
-        info['face_coeff']=loadmat(file.replace('.pkl','.mat').replace('data2','video'))
-
-        # 对齐音频数据
-        if len(info['audio_mfcc'])<len(info['face_video']):
-            temp_last=torch.tensor(info['audio_mfcc'][-1]).expand(len(info['face_video'])-len(info['audio_mfcc']),-1,-1)
-            info['audio_mfcc']=np.concatenate((info['audio_mfcc'],temp_last.numpy()))
-        else:
-            info['audio_mfcc']=info['audio_mfcc'][:len(info['face_video'])]
-        if len(info['audio_hugebert'])<2*len(info['face_video']):
-            temp_last=torch.tensor(info['audio_hugebert'][-1]).expand(2*len(info['face_video'])-len(info['audio_hugebert']),-1)
-            info['audio_hugebert']=np.concatenate((info['audio_hugebert'],temp_last.numpy()))
-        else:
-            info['audio_hugebert']=info['audio_hugebert'][:2*len(info['face_video'])]
-
-        # 检验长度对齐
-        assert len(info['face_coeff']['coeff'])==len(info['face_video'])
-        assert len(info['audio_hugebert'])==2*len(info['face_video'])
-        assert len(info['audio_mfcc'])==len(info['face_video'])
-
-        # 获得最终数据，使用压缩操作
-        save_file=file.replace('data2','data')
-        os.makedirs(os.path.dirname(save_file),exist_ok=True)
-        info = pickle.dumps(info)
-        info=zlib.compress(info)
-        with open(save_file,'wb') as f:
-            f.write(info)
-
-    logger.info('已结束：进程{}任务合并文件夹{}的内容'.format(os.getpid(),dir_name))
-
-
 
 
 if __name__=='__main__':
@@ -252,10 +176,8 @@ if __name__=='__main__':
     # test
     dir_list=['data']
     for file_list in dir_list:
-        format_data_by_cuda(file_list)
-        format_data_no_use_cuda(file_list)
-    # dir_list=['data2/format_data/train/0']
-    # merge_data2(file_list)
+        format_data(file_list)
+        merge_data(file_list)
 
     
     # workers=4
@@ -269,18 +191,18 @@ if __name__=='__main__':
     # for _ in pool.imap_unordered(format_data_no_use_cuda,dir_list):
     #     None
     # pool.close()
-    print(logger.info('\n开始合并数据\n'))
-    workers=5
-    dir_list=sorted(glob.glob('data2/format_data/*/*'))
-    pool = Pool(workers)
-    for _ in pool.imap_unordered(merge_data2,dir_list):
-        None
-    pool.close()
+    # print(logger.info('\n开始合并数据\n'))
+    # workers=5
+    # dir_list=sorted(glob.glob('data2/format_data/*/*'))
+    # pool = Pool(workers)
+    # for _ in pool.imap_unordered(merge_data,dir_list):
+    #     None
+    # pool.close()
 
 
 
 
-    # # 接下类是转移文件
+    # # 接下是转移文件
     # dataset_root=config['mead_root_path']
     # filenames=sorted(glob.glob(f'{dataset_root}/*/video/*/*/*/*.pkl'))
     # out_path=config['format_output_path']
@@ -297,7 +219,7 @@ if __name__=='__main__':
     #     file_list=file.split('/')
     #     out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
     #     out_name=os.path.join(path,out_name)
-    #     shutil.copyfile(file,out_name)
+    #     shutil.move(file,out_name)
     #     cnt+=1
     # cnt=0
     # for file in test_file.tolist():
@@ -307,7 +229,7 @@ if __name__=='__main__':
     #     file_list=file.split('/')
     #     out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
     #     out_name=os.path.join(path,out_name)
-    #     shutil.copyfile(file,out_name)
+    #     shutil.move(file,out_name)
     #     cnt+=1
     # cnt=0
     # for file in train_file.tolist():
@@ -317,9 +239,7 @@ if __name__=='__main__':
     #     file_list=file.split('/')
     #     out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
     #     out_name=os.path.join(path,out_name)
-    #     shutil.copyfile(file,out_name)
+    #     shutil.move(file,out_name)
     #     cnt+=1
-    # for file in filenames:
-    #     os.remove(file)
 
     
