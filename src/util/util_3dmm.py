@@ -19,16 +19,13 @@ facemodel=ParametricFaceModel(
         )
 
 
-@torch.no_grad()
 def get_lm_by_3dmm(id_3dmm,exp_3dmm):
     r'''通过3dmm的身份和表情参数，获得2d唇部landmark
     参数：
         id_3dmm：(B，80)，tensor
         exp_3dmm：(B, 64)，tensor
     返回：
-        landmark：(B,20,2)，tensor
-    注意：
-        （1）该方法主要为syncNet中需要将3dmm转为landmark做准备
+        landmark：(B,68,2)，tensor
     '''
     device=id_3dmm.device
     facemodel.to(device)
@@ -43,9 +40,7 @@ def get_lm_by_3dmm(id_3dmm,exp_3dmm):
     face_proj = facemodel.to_image(face_vertex)
     landmark = facemodel.get_landmarks(face_proj)
 
-    mouth_lamdmark=landmark[:,48:]
-
-    return mouth_lamdmark
+    return landmark
 
 
 

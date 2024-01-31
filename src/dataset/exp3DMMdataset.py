@@ -114,7 +114,9 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         audio_data=self.process_audio(data)
         # (frame,win,28,dim)
         out[f'{type}audio']=torch.tensor(audio_data[0]).float()
-        # out['audio_hubert']=torch.tensor(audio_data[1]).float()
+        out[f'{type}hubert']=torch.tensor(audio_data[1]).float()
+        # 唇形监督器label
+        out[f'{type}label'] = torch.ones(len(audio_data[1]))
 
         # 获得输入视频
         mask_video=self.process_mask_video(data)
@@ -241,7 +243,8 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
     def collater(self, samples):
         # 对齐数据
         triple_list=['']
-        data_key=['gt_video','img','gt_3dmm','id_3dmm','audio','video','pose']
+        data_key=['gt_video','img','gt_3dmm','id_3dmm','audio','video','pose',
+                  'hubert','label']
         data={}
         for key in data_key:
             for triple in triple_list:

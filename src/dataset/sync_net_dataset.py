@@ -65,7 +65,8 @@ class SyncNetDataset(torch.utils.data.Dataset):
             face3d_id=face3d_id[:len(hubert)//2]
         
         out['hubert']=hubert
-        mouth_lamdmark=get_lm_by_3dmm(face3d_id,face3d_exp)
+        mouth_lamdmark=get_lm_by_3dmm(face3d_id,face3d_exp)[:,48:]
+        mouth_lamdmark=mouth_lamdmark.detach()
         # 得到mouth landmark后，因为要作为模型输入，需要标准化到（-1,1）中
         # 1.按照原点对齐
         original = torch.sum(mouth_lamdmark,dim=1) / mouth_lamdmark.shape[1]

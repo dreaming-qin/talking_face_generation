@@ -21,9 +21,22 @@ from src.util.logger import logger_config
 from src.dataset.sync_net_dataset import SyncNetDataset
 from src.model.syncNet.sync_net import SyncNet
 from src.loss.sync_net_loss import SyncNetLoss
-from src.util.model_util import freeze_params
 
+'''
+经过训练，最好的训练参数是：
+train_dataset: sample_per_video=40 workers=5 batch_size=25
+test_dataset: sample_per_video=40 workers=3 batch_size=10
+eval_dataset: sample_per_video=40 workers=3 batch_size=10
+optimizer: betas=(0.5, 0.999)
+scheduler: gamma=0.2
 
+lr_scheduler_step: [13,26]
+epoch: 40
+lr: 0.0005
+
+使用预训练的模型的话，最好的参数是：
+
+'''
 
 
 @torch.no_grad()
@@ -40,13 +53,13 @@ def eval(syncnet,loss_function,dataloader,checkpoint=None):
             data[key]=value.to(next(syncnet.parameters()).device)
 
         audio_e,mouth_e=syncnet(data['hubert'],data['mouth_landmark'])
-        temp=loss_function(audio_e,mouth_e,data['label'])
+        cos = torch.nn.functional.cosine_similarity(audio_e, mouth_e)
+        temp=cos.mean()
         ans.append(temp)
 
     syncnet.train()
     
     return sum(ans)/len(ans)
-
 
 
 def run(config):
@@ -64,33 +77,33 @@ def run(config):
 
     # 训练集
     # 训练时，获得的数据大小是batch_size*frame_num*3, 3是因为三元对loss
-    train_dataset=SyncNetDataset(config,type='train',sample_per_video=20)
+    train_dataset=SyncNetDataset(config,type='train',sample_per_video=40)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=3, 
+        batch_size=15,
         shuffle=True,
         drop_last=False,
-        num_workers=1,
+        num_workers=5,
         collate_fn=train_dataset.collater
     )     
     # 验证集
-    eval_dataset=SyncNetDataset(config,type='eval',sample_per_video=20)
+    eval_dataset=SyncNetDataset(config,type='eval',sample_per_video=40)
     eval_dataloader = torch.utils.data.DataLoader(
         eval_dataset,
-        batch_size=5, 
+        batch_size=10, 
         shuffle=True,
         drop_last=False,
-        num_workers=1,
+        num_workers=3,
         collate_fn=eval_dataset.collater
     )     
     # 测试集
-    test_dataset=SyncNetDataset(config,type='test',sample_per_video=20)
+    test_dataset=SyncNetDataset(config,type='test',sample_per_video=40)
     test_dataloader = torch.utils.data.DataLoader(
         test_dataset,
-        batch_size=5, 
+        batch_size=10, 
         shuffle=True,
         drop_last=False,
-        num_workers=1,
+        num_workers=3,
         collate_fn=test_dataset.collater
     )     
 
@@ -114,7 +127,7 @@ def run(config):
 
 
     # 其它的一些参数
-    best_metrices=1e4
+    best_metrices=-1
     best_checkpoint=None
 
     train_logger.info('准备完成，开始训练')
@@ -140,7 +153,7 @@ def run(config):
         eval_metrices=eval(syncnet,loss_function,eval_dataloader,checkpoint=None)
         test_logger.info(f'第{epoch}次后，对模型进行验证，验证获得的结果为{eval_metrices}')
         # 如果验证结果好，保存训练模型
-        if eval_metrices<best_metrices:
+        if eval_metrices>best_metrices:
             best_metrices=eval_metrices
             pth_path= os.path.join(config['checkpoint_dir'],f'epoch_{epoch}_metrices_{best_metrices}.pth')
             best_checkpoint=pth_path

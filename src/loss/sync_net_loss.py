@@ -28,6 +28,20 @@ class SyncNetLoss(nn.Module):
         '''
         gt_d = label.float().view(-1,1).to(audio_embedding.device)
         d = nn.functional.cosine_similarity(audio_embedding, mouth_embedding)
+
+
+        one_list,zero_list=[],[]
+        for i,j in zip(d,gt_d.reshape(-1)):
+            if j>0.5:
+                one_list.append(i.item())
+            else:
+                zero_list.append(i.item())
+        one_list=sorted(one_list,reverse=True)
+        zero_list=sorted(zero_list,reverse=True)
+        zero_mean=sum(zero_list)/len(zero_list)
+        one_mean=sum(one_list)/len(one_list)
+
+
         loss = self.logloss(d.unsqueeze(1), gt_d)
         return loss
     

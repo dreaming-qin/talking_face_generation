@@ -70,7 +70,7 @@ def process_syncNet_audio(audio_file):
     return hubert_hidden.detach().numpy()
 
 @torch.no_grad()
-def get_hubert_from_speech(speech, device="cuda:0"):
+def get_hubert_from_speech(speech, device="cuda:1"):
     global hubert_model
     hubert_model = hubert_model.to(device)
     if speech.ndim ==2:

@@ -23,11 +23,21 @@ video_encoder:
   scale_factor: 0.5
 
 # loss函数的
-mouth_weight: [5,5]
-exp_weight: [2,2]
+#比较landmark用的
+landmark_weight: 1
+# 直接比较3DMM用的
+exp_weight: 1
+# 唇形同步器用的
+sync_weight: 1
+# 重构权重
 rec_weight: 10
 # rec_low_weight中，第一项是L1 loss，第二项是ssim
 rec_low_weight: [0.5,0.5]
+# 唇形同步器
+sync_net_pre_train: "checkpoint/syncNet/epoch_96_metrices_0.07145532965660095.pth"
+landmark_dim: 40
+audio_dim: 1024
+
 
 audio_win_size: 5
 render_win_size: 13

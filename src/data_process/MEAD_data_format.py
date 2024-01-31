@@ -10,6 +10,7 @@ import shutil
 from scipy.io import loadmat
 import torch
 import imageio
+from tqdm import tqdm
 
 # test 
 if __name__=='__main__':
@@ -62,6 +63,8 @@ def format_data(dir_name):
 
 def merge_data(dir_name):
     # 获得所有信息后，开始合并所需要的信息
+    global logger
+    logger.info('进程{}合并文件夹{}的内容'.format(os.getpid(),dir_name))
 
     # 对视频的整理
     filenames = glob.glob(f'{dir_name}/*.mp4')
@@ -144,6 +147,84 @@ def merge_data(dir_name):
         # video_array=np.array(temp)
         # imageio.mimsave('mask.mp4',video_array)
 
+    logger.info('已结束：进程{}任务合并文件夹{}的内容'.format(os.getpid(),dir_name))
+
+
+def move_data(config):
+    global logger
+    logger.info(f'转移数据中...')
+    # 接下是转移文件
+    dataset_root=config['mead_root_path']
+    filenames=sorted(glob.glob(f'{dataset_root}/*/video/*/*/*/*.pkl'))
+    out_path=config['format_output_path']
+    # 拿300作为验证集，300作为测试集，其余作为训练集
+    random.shuffle(filenames)
+    eval_file=filenames[:300]
+    test_file=filenames[300:600]
+    train_file=filenames[600:]
+    # 测试验证集，测试集是否有在训练集中
+    eval_set,test_set,train_set=set(eval_file),set(test_file),set(train_file)
+    for eval in eval_set:
+        if eval in train_set:
+            logger.info(f'验证集的数据{eval}在训练集中')
+    for test in test_set:
+        if test in train_set:
+            logger.info(f'测试集的数据{test}在训练集中')
+
+    # 开始转移文件
+    cnt=0
+    for file in eval_file:
+        if cnt%500==0:
+            path=os.path.join(out_path,f'eval/{cnt//500}')
+            os.makedirs(path,exist_ok=True)
+        file_list=file.split('/')
+        out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
+        out_name=os.path.join(path,out_name)
+        shutil.move(file,out_name)
+        cnt+=1
+    cnt=0
+    for file in test_file:
+        if cnt%500==0:
+            path=os.path.join(out_path,f'test/{cnt//500}')
+            os.makedirs(path,exist_ok=True)
+        file_list=file.split('/')
+        out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
+        out_name=os.path.join(path,out_name)
+        shutil.move(file,out_name)
+        cnt+=1
+    cnt=0
+    for file in train_file:
+        if cnt%500==0:
+            path=os.path.join(out_path,f'train/{cnt//500}')
+            os.makedirs(path,exist_ok=True)
+        file_list=file.split('/')
+        out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
+        out_name=os.path.join(path,out_name)
+        shutil.move(file,out_name)
+        cnt+=1
+    logger.info(f'转移数据完毕')
+
+
+    # 所有文件的解压测试
+    out_path=config['format_output_path']
+    pkl_files=sorted(glob.glob(f'{out_path}/*/*/*.pkl'))
+    delete_file=[]
+    logger.info(f'对pkl文件进行解压测试中...')
+    for file in tqdm(pkl_files):
+        try:
+            with open(file,'rb') as f:
+                byte_file=f.read()
+            byte_file=zlib.decompress(byte_file)
+            data= pickle.loads(byte_file)
+        except:
+            delete_file.append(file)    
+    print(delete_file)
+    logger.info(f'需要删除的文件有：')
+    for file in delete_file:
+        os.remove(file)
+        logger.info(f'{file}')
+    logger.info(f'删除完成')
+
 
 if __name__=='__main__':
     set_start_method('spawn')
@@ -174,72 +255,24 @@ if __name__=='__main__':
     # dir_list=dir_list[index:]
 
     # test
-    dir_list=['data']
-    for file_list in dir_list:
-        format_data(file_list)
-        merge_data(file_list)
+    # dir_list=['data']
+    # for file_list in dir_list:
+    #     format_data(file_list)
+    #     merge_data(file_list)
 
     
-    # workers=4
+    # workers=3
     # pool = Pool(workers)
-    # for _ in pool.imap_unordered(format_data_by_cuda,dir_list):
+    # for _ in pool.imap_unordered(format_data,dir_list):
     #     None
     # pool.close()
-    # print(logger.info('\n使用cuda获得的数据已处理完毕，现在处理不使用cuda的\n'))
+    # print(logger.info('\n获得的数据已处理完毕，现在合并文件\n'))
     # workers=5
-    # pool = Pool(workers)
-    # for _ in pool.imap_unordered(format_data_no_use_cuda,dir_list):
-    #     None
-    # pool.close()
-    # print(logger.info('\n开始合并数据\n'))
-    # workers=5
-    # dir_list=sorted(glob.glob('data2/format_data/*/*'))
     # pool = Pool(workers)
     # for _ in pool.imap_unordered(merge_data,dir_list):
     #     None
     # pool.close()
 
+    # move_data(config)
 
 
-
-    # # 接下是转移文件
-    # dataset_root=config['mead_root_path']
-    # filenames=sorted(glob.glob(f'{dataset_root}/*/video/*/*/*/*.pkl'))
-    # out_path=config['format_output_path']
-    # # 拿500作为验证集，500作为测试集，其余作为训练集
-    # temp_index=sorted(random.sample(range(len(filenames)),1000))
-    # eval_file=filenames[temp_index[:500]]
-    # test_file=filenames[temp_index[500:]]
-    # train_file=np.delete(np.array(filenames),temp_index)
-    # cnt=0
-    # for file in eval_file.tolist():
-    #     if cnt%500==0:
-    #         path=os.path.join(out_path,f'eval/{cnt//500}')
-    #         os.makedirs(path,exist_ok=True)
-    #     file_list=file.split('/')
-    #     out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
-    #     out_name=os.path.join(path,out_name)
-    #     shutil.move(file,out_name)
-    #     cnt+=1
-    # cnt=0
-    # for file in test_file.tolist():
-    #     if cnt%500==0:
-    #         path=os.path.join(out_path,f'test/{cnt//500}')
-    #         os.makedirs(path,exist_ok=True)
-    #     file_list=file.split('/')
-    #     out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
-    #     out_name=os.path.join(path,out_name)
-    #     shutil.move(file,out_name)
-    #     cnt+=1
-    # cnt=0
-    # for file in train_file.tolist():
-    #     if cnt%500==0:
-    #         path=os.path.join(out_path,f'train/{cnt//500}')
-    #         os.makedirs(path,exist_ok=True)
-    #     file_list=file.split('/')
-    #     out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
-    #     out_name=os.path.join(path,out_name)
-    #     shutil.move(file,out_name)
-    #     cnt+=1
-
-    

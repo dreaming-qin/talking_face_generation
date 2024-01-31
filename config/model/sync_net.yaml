@@ -2,13 +2,13 @@ landmark_dim: 40
 audio_dim: 1024
 
 # 训练参数
-lr_scheduler_step: [30,60]
-epoch: 100
+epoch: 40
+lr_scheduler_step: [13,26]
 device_id: [0]
 lr: 0.0005
 
 
 
 # 相关文件夹
-# sync_net_pre_train: "checkpoint/syncNet/temp.pth"
+sync_net_pre_train: "checkpoint/syncNet/epoch_32_metrices_0.640333890914917.pth"
 checkpoint_dir: "checkpoint/syncNet"

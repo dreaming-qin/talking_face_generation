@@ -21,6 +21,29 @@ from src.loss.renderLoss import RenderLoss
 
 from src.metrics.SSIM import ssim as eval_ssim
 
+'''经过训练，最好的训练参数是：
+train_dataset: frame_num=2 workers=3 batch_size=7
+test_dataset: frame_num=2 workers=2 batch_size=5
+eval_dataset: frame_num=2 workers=2 batch_size=5
+optimizer: betas=(0.5, 0.999)
+scheduler: gamma=0.2
+
+epoch: 40
+warp_epoch: 20
+lr: 0.0001
+lr_scheduler_step: [30]
+
+rec_low_weight: [60,0]
+vgg_weight: [1,1,1,1,1]
+num_scales: 4
+
+使用预训练的模型的话，最好的参数是：
+epoch: 40
+warp_epoch: 20
+lr: 0.0001
+lr_scheduler_step: [30]
+
+'''
 
 @torch.no_grad()
 def eval(render,dataloader,checkpoint=None,stage='warp'):
@@ -85,7 +108,7 @@ def save_result(render,dataloader,save_dir,save_video_num):
         img=data['src'].permute(0,2,3,1)
         fake=output_dict['fake_image'].permute(0,2,3,1)
         # [len,H,4*W,3]
-        video=torch.concatenate((real_video,img,warp,fake),dim=2)
+        video=torch.cat((real_video,img,warp,fake),dim=2)
         save_path=os.path.join(save_dir,'{}.mp4'.format(it))
         torchvision.io.write_video(save_path, ((video+1)/2*255).cpu(), fps=1)
     render.train()
@@ -113,10 +136,10 @@ def run(config):
     train_dataset=RenderDataset(config,type='train',frame_num=2)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=2, 
+        batch_size=7, 
         shuffle=True,
         drop_last=False,
-        num_workers=1,
+        num_workers=3,
         collate_fn=train_dataset.collater
     )     
     # 验证集
@@ -184,7 +207,7 @@ def run(config):
 
             if stage=='warp':
                 # 计算loss
-                loss=loss_function(output_dict['warp_image'],data,stage='warp')
+                loss=loss_function(output_dict['warp_image'],data,stage='edit')
             else:
                 loss=loss_function(output_dict['warp_image'],data,stage='warp')
                 loss+=loss_function(output_dict['fake_image'],data)
