@@ -26,28 +26,28 @@ video_encoder:
 #比较landmark用的
 landmark_weight: 1
 # 直接比较3DMM用的
-exp_weight: 1
+exp_weight: 4
 # 唇形同步器用的
 sync_weight: 1
 # 重构权重
-rec_weight: 10
+rec_weight: 15
 # rec_low_weight中，第一项是L1 loss，第二项是ssim
-rec_low_weight: [0.5,0.5]
+rec_low_weight: [1,0]
 # 唇形同步器
-sync_net_pre_train: "checkpoint/syncNet/epoch_96_metrices_0.07145532965660095.pth"
+sync_net_pre_train: "checkpoint/syncNet/epoch_120_metrices_0.7664950489997864.pth"
 landmark_dim: 40
 audio_dim: 1024
 
 
 audio_win_size: 5
 render_win_size: 13
-device_id: [0]
+device_id: [1]
 checkpoint_dir: "checkpoint/exp3DMM"
 result_dir: "result/exp3DMM"
-epoch: 100
+epoch: 100000
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [30]
+lr_scheduler_step: [40]
 
-exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_19_metrices_0.8666886615697682.pth"
-render_pre_train: "checkpoint/render/0/edit_epoch_32_metrices_0.8905495066160443.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_1_metrices_0.8992061911330247.pth"
+render_pre_train: "checkpoint/render/edit_epoch_68_metrices_0.928789144547454.pth"

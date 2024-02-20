@@ -28,21 +28,20 @@ eval_dataset: frame_num=2 workers=2 batch_size=5
 optimizer: betas=(0.5, 0.999)
 scheduler: gamma=0.2
 
-epoch: 40
-warp_epoch: 20
+epoch: 80以及更大
+warp_epoch: 40（固定不变）
 lr: 0.0001
-lr_scheduler_step: [30]
+lr_scheduler_step: [60]（edit阶段剩下那一半）
 
 rec_low_weight: [60,0]
 vgg_weight: [1,1,1,1,1]
 num_scales: 4
 
 使用预训练的模型的话，最好的参数是：
-epoch: 40
-warp_epoch: 20
+epoch: 80以及更大
+warp_epoch: 40（固定不变）
 lr: 0.0001
-lr_scheduler_step: [30]
-
+lr_scheduler_step: [60]（edit阶段剩下那一半）
 '''
 
 @torch.no_grad()
@@ -103,9 +102,9 @@ def save_result(render,dataloader,save_dir,save_video_num):
         # [len,H,W,3]
         real_video=data['target'].permute(0,2,3,1)
         # [len,H,W,3]
-        warp=output_dict['warp_image'].permute(0,2,3,1)
-        # [len,H,W,3]
         img=data['src'].permute(0,2,3,1)
+        # [len,H,W,3]
+        warp=output_dict['warp_image'].permute(0,2,3,1)
         fake=output_dict['fake_image'].permute(0,2,3,1)
         # [len,H,4*W,3]
         video=torch.cat((real_video,img,warp,fake),dim=2)

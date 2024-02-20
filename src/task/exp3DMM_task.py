@@ -25,7 +25,31 @@ from src.loss.exp3DMMLoss import Exp3DMMLoss
 from src.util.model_util import freeze_params
 from src.metrics.SSIM import ssim as eval_ssim
 
+'''
+经过训练，最好的训练参数是：
+4090版本的
+train_dataset: frame_num=1 workers=6 batch_size=6
 
+train_dataset: frame_num=1 workers=1 batch_size=6
+test_dataset: frame_num=1 workers=1 batch_size=5
+eval_dataset: frame_num=1 workers=1 batch_size=5
+optimizer: betas=(0.5, 0.999)
+scheduler: gamma=0.2
+
+
+lr_scheduler_step: [40]
+epoch: 100000
+lr: 0.0001
+
+landmark_weight: 1
+exp_weight: 4
+sync_weight: 1
+rec_weight: 15
+rec_low_weight: [1,0]
+
+使用预训练的模型的话，最好的参数是：
+
+'''
 
 
 @torch.no_grad()
@@ -110,12 +134,12 @@ def run(config):
     train_dataset=Exp3DMMdataset(config,type='train',frame_num=1)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=1, 
+        batch_size=6, 
         shuffle=True,
         drop_last=False,
         num_workers=1,
         collate_fn=train_dataset.collater
-    )     
+    )
     # 验证集
     eval_dataset=Exp3DMMdataset(config,type='eval',frame_num=1)
     eval_dataloader = torch.utils.data.DataLoader(
@@ -156,7 +180,7 @@ def run(config):
     if 'exp_3dmm_pre_train' in config:
         train_logger.info('exp 3dmm模块加载预训练模型{}'.format(config['exp_3dmm_pre_train']))
         state_dict=torch.load(config['exp_3dmm_pre_train'],map_location=torch.device('cpu'))
-        exp_model.load_state_dict(state_dict)
+        exp_model.load_state_dict(state_dict,strict=False)
 
     
     # 验证
@@ -219,7 +243,6 @@ def run(config):
         # 根据验证结果，调节学习率
         scheduler.step()
         train_logger.info('当前学习率为{}'.format(optimizer.param_groups[0]['lr']))
-
 
     
     # 测试模型

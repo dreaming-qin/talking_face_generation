@@ -64,14 +64,14 @@ class Exp3DMMLoss(nn.Module):
             tdmm_loss*=self.exp_weight
             loss+=tdmm_loss
 
-            # # 第二部分，landmark比较
-            real_lamdmark=get_lm_by_3dmm(data[f'{type}id_3dmm'].reshape(-1,80),
-                                         data[f'{type}gt_3dmm'].reshape(-1,64))
+            # 第二部分，landmark比较
+            # real_lamdmark=get_lm_by_3dmm(data[f'{type}id_3dmm'].reshape(-1,80),
+            #                              data[f'{type}gt_3dmm'].reshape(-1,64))
             fake_lamdmark=get_lm_by_3dmm(data[f'{type}id_3dmm'].reshape(-1,80),
                                         predict[f'{type}exp'].reshape(-1,64))
-            landmark_loss=self.L1_loss(fake_lamdmark,real_lamdmark)
-            landmark_loss*=self.landmark_weight
-            loss+=landmark_loss
+            # landmark_loss=self.L1_loss(fake_lamdmark,real_lamdmark)
+            # landmark_loss*=self.landmark_weight
+            # loss+=landmark_loss
 
             # 第三部分唇形监督器loss
             if self.sync_net is not None:

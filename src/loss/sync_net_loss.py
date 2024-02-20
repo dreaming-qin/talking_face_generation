@@ -1,4 +1,5 @@
 from torch import nn
+import torch
 
 
 # 测试代码
@@ -18,6 +19,7 @@ class SyncNetLoss(nn.Module):
     def __init__(self):
         super(SyncNetLoss, self).__init__()
         self.logloss = nn.BCELoss()
+        self.relu=nn.ReLU()
 
     def forward(self, audio_embedding, mouth_embedding, label):
         r'''
@@ -29,20 +31,27 @@ class SyncNetLoss(nn.Module):
         gt_d = label.float().view(-1,1).to(audio_embedding.device)
         d = nn.functional.cosine_similarity(audio_embedding, mouth_embedding)
 
-
-        one_list,zero_list=[],[]
-        for i,j in zip(d,gt_d.reshape(-1)):
-            if j>0.5:
-                one_list.append(i.item())
-            else:
-                zero_list.append(i.item())
-        one_list=sorted(one_list,reverse=True)
-        zero_list=sorted(zero_list,reverse=True)
-        zero_mean=sum(zero_list)/len(zero_list)
-        one_mean=sum(one_list)/len(one_list)
-
+        # gt_d=gt_d.reshape(-1)
+        # one_index=torch.nonzero(gt_d>0.5,as_tuple=True)
+        # one_cos=d[one_index]
+        # zero_index=torch.nonzero(gt_d<0.5,as_tuple=True)
+        # zero_cos=d[zero_index]
+        # loss=(1-one_cos).mean()+self.relu(zero_cos-0.3).mean()
 
         loss = self.logloss(d.unsqueeze(1), gt_d)
+
+        # # test
+        # one_list,zero_list=[],[]
+        # for i,j in zip(d,gt_d.reshape(-1)):
+        #     if j>0.5:
+        #         one_list.append(i.item())
+        #     else:
+        #         zero_list.append(i.item())
+        # one_list=sorted(one_list,reverse=True)
+        # zero_list=sorted(zero_list,reverse=True)
+        # zero_mean=sum(zero_list)/len(zero_list)
+        # one_mean=sum(one_list)/len(one_list)
+
         return loss
     
     

@@ -63,10 +63,32 @@ from src.model.syncNet.sync_net import SyncNet
 
 '''往data中加入path'''
 if __name__=='__main__':
-    state_dict=torch.load("checkpoint/syncNet/model_ckpt_steps_40000.ckpt",map_location=torch.device('cpu'))
-    model=state_dict['state_dict']['model']
-    ans={}
-    for key,value in model.items():
-        ans[f'module.{key}']=value
-    torch.save(ans,'temp.pth')
-    a=1
+    filenames=sorted(glob.glob('data/format_data/train/*/*.pkl'))
+
+    index=0
+    for file in filenames:
+        if 'M003_front_happy_level_2_011.pkl' in file:
+            break
+        index+=1
+    filenames=filenames[index:]
+
+    a_list=[]
+    for file in filenames:
+        print(f'执行{file}')
+        # 解压pkl文件
+        with open(file,'rb') as f:
+            byte_file=f.read()
+        byte_file=zlib.decompress(byte_file)
+        data= pickle.loads(byte_file)
+        mask_list=data['mouth_mask']
+        index=0
+        for mask in mask_list:
+            try:
+                noise=np.random.randint(0,256,(mask[1]-mask[0],mask[3]-mask[2],3))
+            except:
+                a_list.append((file,index))
+            index+=1
+
+    
+    print(f'\n\n\n 违规帧有{a_list}')
+

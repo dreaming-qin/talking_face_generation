@@ -24,7 +24,7 @@ from src.loss.sync_net_loss import SyncNetLoss
 
 '''
 经过训练，最好的训练参数是：
-train_dataset: sample_per_video=40 workers=5 batch_size=25
+train_dataset: sample_per_video=40 workers=5 batch_size=15
 test_dataset: sample_per_video=40 workers=3 batch_size=10
 eval_dataset: sample_per_video=40 workers=3 batch_size=10
 optimizer: betas=(0.5, 0.999)
