@@ -155,8 +155,8 @@ def move_data(config):
     global logger
     logger.info(f'转移数据中...')
     # 接下是转移文件
-    dataset_root=config['mead_root_path']
-    filenames=sorted(glob.glob(f'{dataset_root}/*/video/*/*/*/*.pkl'))
+    dataset_root=config['voxceleb2_root_path']
+    filenames=sorted(glob.glob(f'{dataset_root}/temp/*/*.mp4'))
     out_path=config['format_output_path']
     # 拿300作为验证集，300作为测试集，其余作为训练集
     random.shuffle(filenames)
@@ -293,6 +293,7 @@ if __name__=='__main__':
     for file_list in dir_list:
         format_data(file_list)
         merge_data(file_list)
+        move_data(config)
 
     
     # workers=3
