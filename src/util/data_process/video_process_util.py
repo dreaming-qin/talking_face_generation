@@ -86,7 +86,8 @@ def get_face_image(driving_video):
     bottom=-1
     left=100000
     right=-1
-    # config['augmentation_para
+    _,h,w,_=video_array.shape
+
     # 初始化gray list
     for i in range(len(video_array)):
         gray = cv2.cvtColor(video_array[i], cv2.COLOR_BGR2GRAY)
@@ -96,13 +97,14 @@ def get_face_image(driving_video):
         # pic=video_array[i][aaa.top()-200:aaa.bottom()+100,aaa.left()-150:aaa.right()+150]
         # cv2.imwrite("temp.jpg", pic)
         if len(rects)!=0:
-            top=max(min(top,rects[-1].top()-200),0)
-            bottom=min(max(bottom,rects[-1].bottom()+100),video_array.shape[1])
-            left=max(min(left,rects[-1].left()-150),0)
-            right=min(max(right,rects[-1].right()+150),video_array.shape[2])
+            top=max(min(top,rects[-1].top()-round(0.185*h)),0)
+            bottom=min(max(bottom,rects[-1].bottom()+round(0.0926*h)),video_array.shape[1])
+            left=max(min(left,rects[-1].left()-round(0.0781*w)),0)
+            right=min(max(right,rects[-1].right()+round(0.0781*w)),video_array.shape[2])
+
         # test,测试只检测3张，加快速度
-        if i==10:
-            break
+        # if i==10:
+        #     break
     
     if top==100000:
         # 返回一个全零数组，到时丢弃数据好判断
@@ -122,7 +124,7 @@ def get_face_image(driving_video):
     # video_width = video_array.shape[2]
     # out_video_size = (video_width,video_height)
     # output_video_fourcc = int(cv2.VideoWriter_fourcc(*'mp4v'))
-    # video_write_capture = cv2.VideoWriter('temp.mp4', output_video_fourcc, 30, out_video_size)
+    # video_write_capture = cv2.VideoWriter('temp.mp4', output_video_fourcc, 25, out_video_size)
     # for frame in video_array:
     #     video_write_capture.write(frame)
     # video_write_capture.release()

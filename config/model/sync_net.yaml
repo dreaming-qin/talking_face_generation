@@ -5,10 +5,10 @@ audio_dim: 1024
 epoch: 100000
 lr_scheduler_step: [13,26]
 device_id: [0]
-lr: 0.0005
+lr: 0.0001
 
 
 
 # 相关文件夹
-sync_net_pre_train: "checkpoint/syncNet/epoch_120_metrices_0.7664950489997864.pth"
+sync_net_pre_train: "checkpoint/syncNet/epoch_18_metrices_0.6473926901817322.pth"
 checkpoint_dir: "checkpoint/syncNet"

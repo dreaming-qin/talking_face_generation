@@ -14,10 +14,10 @@ def unfreeze_params(model):
         param.requires_grad = True
 
 def cnt_params(model):
-    temp=0
+    cnt=0
     lst=[]
     for name,para in model.named_parameters():
         lst.append((name,para.nelement()))
-        temp+=para.nelement()
-    return temp,lst
+        cnt+=para.nelement()
+    return cnt,lst
 

@@ -63,7 +63,8 @@ from src.model.syncNet.sync_net import SyncNet
 
 '''往data中加入path'''
 if __name__=='__main__':
-    filenames=sorted(glob.glob('data/format_data/train/*/*.pkl'))
+    filenames=sorted(glob.glob('data/format_data/*/*/*.pkl'))
+    print(len(filenames))
 
     index=0
     for file in filenames:

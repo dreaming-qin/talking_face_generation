@@ -17,6 +17,7 @@ if __name__=='__main__':
 
 import src.model.render.flow_util as flow_util
 from src.model.render.base_function import LayerNorm2d, ADAINHourglass, FineEncoder, FineDecoder
+from src.util.model_util import cnt_params
 
 class Render(nn.Module):
     def __init__(
@@ -31,25 +32,14 @@ class Render(nn.Module):
         self.warpping_net = WarpingNet(**warpping_net, **common)
         self.editing_net = EditingNet(**editing_net, **common)
 
-        # test
-        # temp=0
-        # lst=[]
-        # for name,para in self.mapping_net.named_parameters():
-        #     lst.append((name,para.nelement()))
-        #     temp+=para.nelement()
-        # print(f"mapping_net total paras number: {temp}")
-        # temp=0
-        # lst=[]
-        # for name,para in self.warpping_net.named_parameters():
-        #     lst.append((name,para.nelement()))
-        #     temp+=para.nelement()
-        # print(f"warpping_net total paras number: {temp}")
-        # temp=0
-        # lst=[]
-        # for name,para in self.editing_net.named_parameters():
-        #     lst.append((name,para.nelement()))
-        #     temp+=para.nelement()
-        # print(f"editing_net total paras number: {temp}")
+
+        param_num,_=cnt_params(self.mapping_net)
+        print(f"mapping_net total paras number: {param_num}")
+        param_num,_=cnt_params(self.warpping_net)
+        print(f"warpping_net total paras number: {param_num}")
+        param_num,_=cnt_params(self.editing_net)
+        print(f"editing_net total paras number: {param_num}")
+
  
     def forward(
         self, 

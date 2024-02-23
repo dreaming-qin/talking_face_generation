@@ -48,6 +48,10 @@ rec_weight: 15
 rec_low_weight: [1,0]
 
 使用预训练的模型的话，最好的参数是：
+lr_scheduler_step: [10,20]
+epoch: 100000
+lr: 0.0001
+
 
 '''
 
