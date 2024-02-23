@@ -156,9 +156,9 @@ def move_data(config):
     logger.info(f'转移数据中...')
     # 接下是转移文件
     dataset_root=config['voxceleb2_root_path']
-    filenames=sorted(glob.glob(f'{dataset_root}/temp/*/*.mp4'))
+    filenames=sorted(glob.glob(f'{dataset_root}/train_part/*/*.pkl'))
     out_path=config['format_output_path']
-    # 拿300作为验证集，300作为测试集，其余作为训练集
+    # # 拿300作为验证集，300作为测试集，其余作为训练集
     random.shuffle(filenames)
     eval_file=filenames[:300]
     test_file=filenames[300:600]
@@ -178,8 +178,7 @@ def move_data(config):
         if cnt%500==0:
             path=os.path.join(out_path,f'eval/{cnt//500}')
             os.makedirs(path,exist_ok=True)
-        file_list=file.split('/')
-        out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
+        out_name=os.path.basename(file)
         out_name=os.path.join(path,out_name)
         shutil.move(file,out_name)
         cnt+=1
@@ -260,9 +259,9 @@ if __name__=='__main__':
 
     # 由于vox的数据来源于随机抽检，而我们的数据预处理方法基于文件夹，需要创建临时文件夹进行数据存放
     # 视频命名格式是id_标识_编号.mp4
-    # 存储路径是'{dataset_root}/temp/{index}/*.mp4'
+    # 存储路径是'{dataset_root}/train_part/{index}/*.mp4'
     # filenames=np.load('vox_list.npy').tolist()
-    # save_path=f'{dataset_root}/temp'
+    # save_path=f'{dataset_root}/train_part'
     # index=-1
     # for i,file in tqdm(enumerate(filenames)):
     #     if i%500==0:
@@ -277,9 +276,7 @@ if __name__=='__main__':
     #     file_name=f'{save_path}/{index}/{file_name}'
     #     shutil.copyfile(file,file_name)
 
-
-
-    dir_list=sorted(glob.glob(f'{dataset_root}/temp/*'))
+    dir_list=sorted(glob.glob(f'{dataset_root}/train_part/*'))
 
     # index=0
     # for i,dir in enumerate(dir_list):
@@ -291,8 +288,8 @@ if __name__=='__main__':
     # test
     dir_list=['temp']
     for file_list in dir_list:
-        format_data(file_list)
-        merge_data(file_list)
+        # format_data(file_list)
+        # merge_data(file_list)
         move_data(config)
 
     

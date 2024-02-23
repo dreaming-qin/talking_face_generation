@@ -30,6 +30,7 @@ BFM/
 checkpoint/
 result/
 data/
+data_vox/
 log/
 *.log
 *.pyc
