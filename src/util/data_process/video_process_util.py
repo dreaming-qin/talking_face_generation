@@ -24,14 +24,14 @@ from Deep3DFaceRecon_pytorch.face_recon_videos import get3DMM
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('./checkpoint/shape_predictor_68_face_landmarks.dat')
 
-def process_video(video_dir):
+def process_video(video_dir,dataset_name):
     r'''输入视频目录，处理该目录下所有mp4的视频，生成的信与视频目录放在一块'''
 
     # 获得transformer video
     filenames = sorted(glob.glob(f'{video_dir}/*.mp4'))
     for video_path in filenames:
         info={}
-        process_video,mouth_mask=__process_video__(video_path)
+        process_video,mouth_mask=__process_video__(video_path,dataset_name)
         info['face_video']=np.array(process_video,dtype=np.uint8)
         info['mouth_mask']=np.array(mouth_mask)
         with open(video_path.replace('.mp4','_temp1.pkl'),'wb') as f:
@@ -40,20 +40,16 @@ def process_video(video_dir):
     return
 
 
-def __process_video__(video_path):
+def __process_video__(video_path,dataset_name):
     '''对视频进行预处理，返回transformer后的numpy数组
     只能对一个视频处理的方法
     '''
     reader = imageio.get_reader(video_path)
-    driving_video = []
-    try:
-        # 信息表示为整型
-        driving_video=[im for im in reader]
-    except RuntimeError:
-        pass
+    # 信息表示为整型
+    driving_video=[im for im in reader]
     reader.close()
 
-    process_video,mouth_mask = get_face_image(driving_video)
+    process_video,mouth_mask = get_face_image(driving_video,dataset_name)
 
     # test，测试遮罩效果
     # temp=[]
@@ -80,41 +76,48 @@ def video_to_3DMM_and_pose(video_dir):
     get3DMM(video_dir,video_dir)
 
 
-def get_face_image(driving_video):
+def get_face_image(driving_video,dataset_name):
     video_array = np.array(driving_video, dtype=np.uint8)
     top=100000
     bottom=-1
     left=100000
     right=-1
-    _,h,w,_=video_array.shape
+    _,image_height,image_width,_=video_array.shape
 
     # 初始化gray list
     for i in range(len(video_array)):
-        gray = cv2.cvtColor(video_array[i], cv2.COLOR_BGR2GRAY)
-        rects = detector(gray, 1)  #detect human face
-        # # test
-        # aaa=rects[-1]
-        # pic=video_array[i][aaa.top()-200:aaa.bottom()+100,aaa.left()-150:aaa.right()+150]
-        # cv2.imwrite("temp.jpg", pic)
-        if len(rects)!=0:
-            top=max(min(top,rects[-1].top()-round(0.185*h)),0)
-            bottom=min(max(bottom,rects[-1].bottom()+round(0.0926*h)),video_array.shape[1])
-            left=max(min(left,rects[-1].left()-round(0.0781*w)),0)
-            right=min(max(right,rects[-1].right()+round(0.0781*w)),video_array.shape[2])
-
-        # test,测试只检测3张，加快速度
-        # if i==10:
-        #     break
+        if dataset_name == 'mead':
+            gray = cv2.cvtColor(video_array[i], cv2.COLOR_BGR2GRAY)
+            rects = detector(gray, 1)  #detect human face
+            # # test
+            # aaa=rects[-1]
+            # pic=video_array[i][aaa.top()-200:aaa.bottom()+100,aaa.left()-150:aaa.right()+150]
+            # cv2.imwrite("temp.jpg", pic)
+            if len(rects)!=0:
+                top=max(min(top,rects[-1].top()-round(0.185*image_height)),0)
+                bottom=min(max(bottom,rects[-1].bottom()+round(0.0926*image_height)),video_array.shape[1])
+                left=max(min(left,rects[-1].left()-round(0.0781*image_width)),0)
+                right=min(max(right,rects[-1].right()+round(0.0781*image_width)),video_array.shape[2])
+        elif dataset_name == 'vox':
+            top=image_height
+            bottom=0
+            left=0
+            right=image_width
+        if i==10:
+            break
     
     if top==100000:
         # 返回一个全零数组，到时丢弃数据好判断
         return np.zeros((len(video_array),256,256,3)),np.zeros((len(video_array),4))
     
     # 裁剪图片
-    temp_video_array=[]
-    for pic in video_array:
-        temp_video_array.append(pic[top:bottom,left:right])
-    video_array=np.array(temp_video_array)
+    if dataset_name == 'mead':
+        temp_video_array=[]
+        for pic in video_array:
+            temp_video_array.append(pic[top:bottom,left:right])
+        video_array=np.array(temp_video_array)
+    elif dataset_name == 'vox':
+        pass
     # resize图片
     video_array = [cv2.resize(frame, (256, 256)) for frame in video_array]
     video_array=np.array(video_array)

@@ -37,8 +37,8 @@ optimizer: betas=(0.5, 0.999)
 scheduler: gamma=0.2
 
 
-lr_scheduler_step: [40]
-epoch: 100000
+lr_scheduler_step: [10,17]
+epoch: 25
 lr: 0.0001
 
 landmark_weight: 1
@@ -48,8 +48,8 @@ rec_weight: 15
 rec_low_weight: [1,0]
 
 使用预训练的模型的话，最好的参数是：
-lr_scheduler_step: [10,20]
-epoch: 100000
+lr_scheduler_step: [10,17]
+epoch: 20
 lr: 0.0001
 
 

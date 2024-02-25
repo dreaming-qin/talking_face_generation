@@ -29,8 +29,7 @@ TDDFA_V2_master/
 BFM/
 checkpoint/
 result/
-data/
-data_vox/
+data_*/
 log/
 *.log
 *.pyc

@@ -30,13 +30,14 @@ from src.util.logger import logger_config
 
 
 logger = logger_config(log_path='data_process.log', logging_name='data process log')
+dataset_name='vox'
 
 def format_data(dir_name):
     # 先调用两个方法，获得video和audio的数据
-    global logger
+    global logger,dataset_name
     logger.info('进程{}处理文件夹{}的内容'.format(os.getpid(),dir_name))
 
-    process_video(dir_name)
+    process_video(dir_name,dataset_name)
 
     os.makedirs(f'{dir_name}/temp',exist_ok=True)
     # 从process_video方法中获得的裁剪面部结果生成视频，从这个视频中获得3dmm
@@ -235,6 +236,9 @@ if __name__=='__main__':
         config.update(yaml.safe_load(f))
     dataset_root=config['voxceleb2_root_path']
     
+    # 保证输出路径
+    assert 'vox' in config['format_output_path'], 'format output path {} is not voxceleb2'.format(
+        config['format_output_path'])
 
     # 对于一些不符合规范的视频，删除掉，不然处理会产生问题
     # filenames=glob.glob(f'{dataset_root}/mp4/*/*/*.mp4')
@@ -286,25 +290,25 @@ if __name__=='__main__':
     # dir_list=dir_list[index:]
 
     # test
-    dir_list=['temp']
-    for file_list in dir_list:
+    # dir_list=['temp']
+    # for file_list in dir_list:
         # format_data(file_list)
         # merge_data(file_list)
-        move_data(config)
+        # move_data(config)
 
     
-    # workers=3
-    # pool = Pool(workers)
-    # for _ in pool.imap_unordered(format_data,dir_list):
-    #     None
-    # pool.close()
-    # print(logger.info('\n获得的数据已处理完毕，现在合并文件\n'))
-    # workers=5
-    # pool = Pool(workers)
-    # for _ in pool.imap_unordered(merge_data,dir_list):
-    #     None
-    # pool.close()
+    workers=3
+    pool = Pool(workers)
+    for _ in pool.imap_unordered(format_data,dir_list):
+        None
+    pool.close()
+    print(logger.info('\n获得的数据已处理完毕，现在合并文件\n'))
+    workers=5
+    pool = Pool(workers)
+    for _ in pool.imap_unordered(merge_data,dir_list):
+        None
+    pool.close()
 
-    # move_data(config)
+    move_data(config)
 
 

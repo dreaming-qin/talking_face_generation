@@ -9,6 +9,7 @@ import glob
 from tqdm import tqdm
 import imageio
 import torchvision
+import shutil
 
 
 # test
@@ -63,33 +64,7 @@ from src.model.syncNet.sync_net import SyncNet
 
 '''往data中加入path'''
 if __name__=='__main__':
-    filenames=sorted(glob.glob('data/format_data/*/*/*.pkl'))
-    print(len(filenames))
-
-    index=0
+    filenames=sorted(glob.glob('/workspace/dataset/voxceleb/train/train_part/0/*.pkl'))
     for file in filenames:
-        if 'M003_front_happy_level_2_011.pkl' in file:
-            break
-        index+=1
-    filenames=filenames[index:]
-
-    a_list=[]
-    for file in filenames:
-        print(f'执行{file}')
-        # 解压pkl文件
-        with open(file,'rb') as f:
-            byte_file=f.read()
-        byte_file=zlib.decompress(byte_file)
-        data= pickle.loads(byte_file)
-        mask_list=data['mouth_mask']
-        index=0
-        for mask in mask_list:
-            try:
-                noise=np.random.randint(0,256,(mask[1]-mask[0],mask[3]-mask[2],3))
-            except:
-                a_list.append((file,index))
-            index+=1
-
-    
-    print(f'\n\n\n 违规帧有{a_list}')
+        shutil.copyfile(file,f'temp/{os.path.basename(file)}')
 
