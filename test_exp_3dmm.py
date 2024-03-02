@@ -1,12 +1,9 @@
 import os
 import torch
 from tqdm import tqdm
-import torchvision
 import glob
 import zlib
 import pickle
-import imageio
-from moviepy.editor import VideoFileClip
 import numpy as np
 
 
@@ -22,14 +19,12 @@ if __name__=='__main__':
 
 from src.model.render.render import Render
 from src.model.exp3DMM.exp3DMM import Exp3DMM
-from src.dataset.exp3DMMdataset import get_video_style_clip
 from src.util.model_util import freeze_params
 from src.util.util import get_window
 from test_render import save_video
 from test_render import get_metrices
 
 '''对exp 3dmm，需要知道输入来源不同的情况，因此得补全'''
-
 
 @torch.no_grad()
 def generate_video(config):
@@ -120,20 +115,20 @@ def to_device(data,device,config):
     # audio获得
     # (len,28,dim)
     ans['audio']=torch.tensor(data['audio_mfcc']).float().to(device)
+
     # 可能长度无法对齐，调整
     if len(ans['audio'])<len(ans['real_video']):
-        temp_last=ans['audio'][-1].expand(len(ans['real_video'])-len(ans['audio']),-1,-1)
-        ans['audio']=torch.cat((ans['audio'],temp_last))
+        ans['real_video']=ans['real_video'][:len(ans['audio'])]
     else:
         ans['audio']=ans['audio'][:len(ans['real_video'])]
     # 因为audio窗口问题，需要扩展
     temp_first=ans['audio'][0].expand(config['audio_win_size'],-1,-1)
     temp_last=ans['audio'][-1].expand(config['audio_win_size'],-1,-1)
     ans['audio']=torch.cat((temp_first,ans['audio'],temp_last))
-
     
     # 获得输入video
     ans['video']=torch.tensor((data['face_video']/255*2)-1).float().to(device)
+
     # 因为video窗口问题，需要扩展
     temp_first=ans['video'][0].expand(config['audio_win_size'],-1,-1,-1)
     temp_last=ans['video'][-1].expand(config['audio_win_size'],-1,-1,-1)
@@ -175,10 +170,21 @@ if __name__ == '__main__':
     # 由于GPU限制，得10张10张的往GPU送
     config['frame_num']=10
     # 设置生成的视频数量最大值
-    config['video_num']=60
+    config['video_num']=100
 
 
     generate_video(config)
+    # get_metrices(config)
+
+    # # test
+    # real_dir='{}/result/real'.format(config['result_dir'])
+    # fake_dir='{}/result/fake'.format(config['result_dir'])
+    # from src.metrics.SyncNet import sync_net_by_dir
+    # print('获得结果...')
+    # metrices_dict={}
+    # c,d,gt_c,gt_d=\
+    #     sync_net_by_dir(fake_dir,real_dir)
+    # print(f'{c} {d} {gt_c} {gt_d}')
 
     # test，获得其它方法的结果
     # method=['make','pc_avs','exp3DMM']

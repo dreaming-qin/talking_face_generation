@@ -62,7 +62,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
     r'''用于训练EXP 3DMM提取模块的数据集，需要获得输入，以及LOSS函数需要的输入'''
 
     def __init__(self,config,type='train',frame_num=1):
-        format_path=config['format_output_path_prefix']
+        format_path=config['format_output_path']
         self.filenames=sorted(glob.glob(f'{format_path}/{type}/*/*.pkl'))
         self.emo_dict={}
         for file in self.filenames:
@@ -120,7 +120,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
 
         # 获得输入视频
         mask_video=self.process_mask_video(data)
-        out[f'{type}video']=torch.tensor(mask_video).float()
+        out[f'{type}video']=torch.tensor((mask_video/255*2)-1).float()
         return out
 
     def process_mask_video(self,data):

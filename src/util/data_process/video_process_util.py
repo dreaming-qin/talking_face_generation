@@ -184,7 +184,7 @@ def deal_mouth_mask(mouth_mask):
 
     # 再补齐后面的
     # 找到倒数第一个不是空的
-    for i in range(len(mouth_mask)-1,0,-1):
+    for i in range(len(mouth_mask)-1,-1,-1):
         if len(mouth_mask[i]) !=0:
             end=i
             break

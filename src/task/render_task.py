@@ -38,10 +38,10 @@ vgg_weight: [1,1,1,1,1]
 num_scales: 4
 
 使用预训练的模型的话，最好的参数是：
-epoch: 80以及更大
-warp_epoch: 40（固定不变）
+epoch: 17
+warp_epoch: 2
 lr: 0.0001
-lr_scheduler_step: [60]（edit阶段剩下那一半）
+lr_scheduler_step: [5,10]（edit阶段剩下那一半）
 '''
 
 @torch.no_grad()

@@ -6,7 +6,6 @@ import glob
 import zlib
 import pickle
 import imageio
-from moviepy.editor import VideoFileClip
 import numpy as np
 import shutil
 
@@ -18,6 +17,7 @@ if __name__=='__main__':
     path=sys.path[0]
     sys.path.append(os.path.join(path,'Deep3DFaceRecon_pytorch'))
     sys.path.append(os.path.join(path,'syncnet_python'))
+    sys.path.append(os.path.join(path,'TDDFA_V2_master'))
 
 
 from src.model.render.render import Render
@@ -28,7 +28,7 @@ from src.util.util import remove_file
 from src.metrics.AED import AED_by_dir 
 from src.metrics.APD import APD_by_dir
 from src.metrics.F_LMD import F_LMD_by_dir
-from src.metrics.SyncNet import sync_net_by_dir 
+from src.metrics.SyncNet import sync_net_by_dir
 from src.metrics.M_LMD import M_LMD_by_dir
 from src.metrics.SSIM import ssim_by_dir 
 
@@ -207,9 +207,9 @@ if __name__ == '__main__':
             config.update(yaml.safe_load(f))
     
     # 由于GPU限制，得10张10张的往GPU送
-    config['frame_num']=100
+    config['frame_num']=10
     # 设置生成的视频数量最大值
-    config['video_num']=1000
+    config['video_num']=50
 
 
     generate_video(config)

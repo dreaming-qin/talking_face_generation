@@ -1,10 +1,10 @@
 
+import os
 import glob
 import pickle
 import numpy as np
 import zlib
 from torch.multiprocessing import Pool, set_start_method
-import os
 import random
 import shutil
 from scipy.io import loadmat
@@ -12,6 +12,8 @@ import torch
 import imageio
 from tqdm import tqdm
 import imageio
+import cv2
+import dlib
 
 # test 
 if __name__=='__main__':
@@ -32,11 +34,46 @@ from src.util.logger import logger_config
 logger = logger_config(log_path='data_process.log', logging_name='data process log')
 dataset_name='vox'
 
+def check_data(dir_name):
+    r'''选择需要的150000个数据，并进行检验'''
+    # 在对数据进行预处理之前，先检查数据是否有问题
+    global logger
+    logger.info('进程{}检验文件夹{}的内容'.format(os.getpid(),dir_name))
+
+    detector = dlib.get_frontal_face_detector()
+    filenames = sorted(glob.glob(f'{dir_name}/*.mp4'))
+    delete_num=0
+    for file in filenames:
+        # 检验：是否能够正常读取视频
+        try:
+            reader = imageio.get_reader(file)
+            # 信息表示为整型
+            driving_video=[im for im in reader]
+            reader.close()
+        except:
+            reader.close()
+            os.remove(file)
+            delete_num+=1
+            continue
+        
+        # # 检验：第一帧是否有人脸
+        # gray = cv2.cvtColor(driving_video[0], cv2.COLOR_BGR2GRAY)
+        # rects = detector(gray, 1) 
+        # if len(rects)==0:
+        #     os.remove(file)
+        #     delete_num+=1
+        #     continue
+    
+    logger.info(f'删除了{delete_num}个视频')
+    
+    logger.info('已结束：进程{}检验文件夹{}的内容'.format(os.getpid(),dir_name))
+
+
 def format_data(dir_name):
     # 先调用两个方法，获得video和audio的数据
     global logger,dataset_name
     logger.info('进程{}处理文件夹{}的内容'.format(os.getpid(),dir_name))
-
+    
     process_video(dir_name,dataset_name)
 
     os.makedirs(f'{dir_name}/temp',exist_ok=True)
@@ -45,11 +82,21 @@ def format_data(dir_name):
     for video_path in video_list:
         with open(video_path.replace('.mp4','_temp1.pkl'),'rb') as f:
             info= pickle.load(f)
+        
+        # 检验：当检测不到人脸时，产生全零，需要删除文件
+        # 没有视频信息的，直接弃用
+        frame=info['face_video'][0]
+        if np.sum(frame==0)>3*256*256/4:
+            os.remove(video_path)
+            os.remove(video_path.replace('.mp4','_temp1.pkl'))
+            continue
+
         face_video=info['face_video']
         imageio.mimsave(f'{dir_name}/temp/{os.path.basename(video_path)}',face_video)
     # 获得3dmm
     video_to_3DMM_and_pose(f'{dir_name}/temp')
     # 将结果搬回原文件夹中
+    video_list = sorted(glob.glob(f'{dir_name}/*.mp4'))
     for video_path in video_list:
         shutil.move('{}/temp/{}'.format(dir_name,os.path.basename(video_path).replace('.mp4','.txt')),
                     video_path.replace('.mp4','.txt'))
@@ -97,11 +144,6 @@ def merge_data(dir_name):
         with open(video_path.replace('.mp4','_video.pkl'),'rb') as f:
             temp = pickle.load(f)
         info.update(temp)
-
-        # 没有视频信息的，直接弃用
-        frame=info['face_video'][0]
-        if np.sum(frame==0)>3*256*256/4:
-            continue
 
         # 获得音频的数据
         with open(video_path.replace('.mp4','_audio.pkl'),'rb') as f:
@@ -240,45 +282,31 @@ if __name__=='__main__':
     assert 'vox' in config['format_output_path'], 'format output path {} is not voxceleb2'.format(
         config['format_output_path'])
 
-    # 对于一些不符合规范的视频，删除掉，不然处理会产生问题
+
+    # 抽取数据
     # filenames=glob.glob(f'{dataset_root}/mp4/*/*/*.mp4')
     # random.shuffle(filenames)
-    # # 数据过多，选择150000个数据
-    # filenames=filenames[:150000]
-    # delete_index=[]
-    # for i,file in tqdm(enumerate(filenames)):
-    #     try:
-    #         reader = imageio.get_reader(file)
-    #         # 信息表示为整型
-    #         driving_video=[im for im in reader]
-    #     except:
-    #         delete_index.append(i)
-    # for i in delete_index:
-    #     file=filenames[i]
-    #     print(f'{file}无法读取')
-    #     os.remove(file)
-    # filenames = np.delete(filenames, delete_index)
-    # filenames=np.array(filenames)
-    # np.save('vox_list.npy',filenames)
-
+    # # 需要删除的视频比例是10%，因此先选择160000个数据
+    # filenames=filenames[:160000]
+    # np.save('vox_list.npy',np.array(filenames))
     # 由于vox的数据来源于随机抽检，而我们的数据预处理方法基于文件夹，需要创建临时文件夹进行数据存放
     # 视频命名格式是id_标识_编号.mp4
     # 存储路径是'{dataset_root}/train_part/{index}/*.mp4'
-    # filenames=np.load('vox_list.npy').tolist()
-    # save_path=f'{dataset_root}/train_part'
-    # index=-1
-    # for i,file in tqdm(enumerate(filenames)):
-    #     if i%500==0:
-    #         index+=1
-    #         os.makedirs(f'{save_path}/{index}',exist_ok=True)
-    #     file_copy=file
-    #     dir_list=[]
-    #     for _ in range(3):
-    #         dir_list.append(os.path.basename(file_copy))
-    #         file_copy=os.path.dirname(file_copy)
-    #     file_name=f'{dir_list[2]}_{dir_list[1]}_{dir_list[0]}'
-    #     file_name=f'{save_path}/{index}/{file_name}'
-    #     shutil.copyfile(file,file_name)
+    filenames=np.load('vox_list.npy').tolist()
+    save_path=f'{dataset_root}/train_part'
+    index=-1
+    for i,file in tqdm(enumerate(filenames)):
+        if i%500==0:
+            index+=1
+            os.makedirs(f'{save_path}/{index}',exist_ok=True)
+        file_copy=file
+        dir_list=[]
+        for _ in range(3):
+            dir_list.append(os.path.basename(file_copy))
+            file_copy=os.path.dirname(file_copy)
+        file_name=f'{dir_list[2]}_{dir_list[1]}_{dir_list[0]}'
+        file_name=f'{save_path}/{index}/{file_name}'
+        shutil.copyfile(file,file_name)
 
     dir_list=sorted(glob.glob(f'{dataset_root}/train_part/*'))
 
@@ -292,23 +320,31 @@ if __name__=='__main__':
     # test
     # dir_list=['temp']
     # for file_list in dir_list:
-        # format_data(file_list)
-        # merge_data(file_list)
-        # move_data(config)
+    #     check_data(dir_list[3])
+    #     format_data(dir_list[3])
+    #     merge_data(file_list)
+    #     move_data(config)
 
     
-    workers=3
-    pool = Pool(workers)
-    for _ in pool.imap_unordered(format_data,dir_list):
-        None
-    pool.close()
-    print(logger.info('\n获得的数据已处理完毕，现在合并文件\n'))
-    workers=5
-    pool = Pool(workers)
-    for _ in pool.imap_unordered(merge_data,dir_list):
-        None
-    pool.close()
+    # workers=5
+    # pool = Pool(workers)
+    # for _ in pool.imap_unordered(check_data,dir_list):
+    #     None
 
-    move_data(config)
+    # print(logger.info('\n检验数据完毕，现在开始处理数据\n'))
+    # workers=3
+    # pool = Pool(workers)
+    # for _ in pool.imap_unordered(format_data,dir_list):
+    #     None
+    # pool.close()
+
+    # print(logger.info('\n获得的数据已处理完毕，现在合并文件\n'))
+    # workers=5
+    # pool = Pool(workers)
+    # for _ in pool.imap_unordered(merge_data,dir_list):
+    #     None
+    # pool.close()
+
+    # move_data(config)
 
 

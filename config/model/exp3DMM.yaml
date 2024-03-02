@@ -34,7 +34,7 @@ rec_weight: 15
 # rec_low_weight中，第一项是L1 loss，第二项是ssim
 rec_low_weight: [1,0]
 # 唇形同步器
-sync_net_pre_train: "checkpoint/syncNet/epoch_120_metrices_0.7664950489997864.pth"
+sync_net_pre_train: "checkpoint/syncNet/epoch_18_metrices_0.6473926901817322.pth"
 landmark_dim: 40
 audio_dim: 1024
 
@@ -44,10 +44,10 @@ render_win_size: 13
 device_id: [1]
 checkpoint_dir: "checkpoint/exp3DMM"
 result_dir: "result/exp3DMM"
-epoch: 100000
-lr: 0.000004
+epoch: 10
+lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [10,30]
+lr_scheduler_step: [2,5]
 
-exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_9_metrices_0.9267092292558597.pth"
-render_pre_train: "checkpoint/render/edit_epoch_68_metrices_0.928789144547454.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_7_metrices_0.9282312793030011.pth"
+render_pre_train: "checkpoint/render/edit_epoch_22_metrices_0.9295839777333871.pth"
