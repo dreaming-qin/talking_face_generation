@@ -74,6 +74,8 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         self.frame_num=frame_num
         self.audio_win_size=config['audio_win_size']
         self.exp_3dmm_win_size=config['render_win_size']
+        self.mask_width=config['mask_width']
+        self.mask_height=config['mask_height']
 
     def __len__(self):
         return len(self.filenames)
@@ -137,10 +139,15 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
                 img=data['face_video'][index].copy()
                 mask=data['mouth_mask'][index]
                 if mask[1]-mask[0]>0 and mask[3]-mask[2]>0:
-                    noise=np.random.randint(0,256,(mask[1]-mask[0],mask[3]-mask[2],3))
-                    img[mask[0]:mask[1],mask[2]:mask[3]]=noise
+                    top,bottom,left,right=mask
+                    top=max(0,min(top,top-((self.mask_height-bottom+top)//2)))
+                    bottom=min(img.shape[0],max(bottom,bottom+((self.mask_height-bottom+top)//2)))
+                    left=max(0,min(left,left-((self.mask_width-right+left)//2)))
+                    right=min(img.shape[1],max(right,right+((self.mask_width-right+left)//2)))
+                    noise=np.random.randint(0,256,(bottom-top,right-left,3))
+                    img[top:bottom,left:right]=noise
                 temp.append(img)
-                # test
+                # # test
                 # imageio.imsave('temp1.jpg',data['face_video'][index])
                 # imageio.imsave('temp2.jpg',img)
             mask_video.append(temp)
@@ -276,6 +283,7 @@ if __name__=='__main__':
         collate_fn=dataset.collater
     )     
     for data in dataloader:
-        for key,value in data.items():
-            print('{}形状为{}'.format(key,value.shape))
-        break
+        exp=data['gt_3dmm'][0,0].cpu().numpy()
+        id=data['id_3dmm'][0,0].cpu().numpy()
+        dmm=np.concatenate((exp,id))
+        np.save('3dmm',dmm)

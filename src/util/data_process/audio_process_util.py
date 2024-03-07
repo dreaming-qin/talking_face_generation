@@ -118,4 +118,4 @@ def get_hubert_from_speech(speech, device="cuda:1"):
     return ret
 
 if __name__=='__main__':
-    process_audio('data')
+    process_audio('/workspace/dataset/MEAD/M003/video/front/angry/level_1')

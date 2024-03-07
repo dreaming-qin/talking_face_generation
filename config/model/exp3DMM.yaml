@@ -23,8 +23,8 @@ video_encoder:
   scale_factor: 0.5
 
 # loss函数的
-#比较landmark用的
-landmark_weight: 1
+#比较唇部landmark用的
+landmark_weight: 10
 # 直接比较3DMM用的
 exp_weight: 4
 # 唇形同步器用的
@@ -41,13 +41,16 @@ audio_dim: 1024
 
 audio_win_size: 5
 render_win_size: 13
-device_id: [1]
+# 面部遮罩大小
+mask_width: 100
+mask_height: 60
+device_id: [0]
 checkpoint_dir: "checkpoint/exp3DMM"
 result_dir: "result/exp3DMM"
-epoch: 10
+epoch: 12
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [2,5]
+lr_scheduler_step: [2,8]
 
-exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_7_metrices_0.9282312793030011.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_12_metrices_0.88260212565337.pth"
 render_pre_train: "checkpoint/render/edit_epoch_22_metrices_0.9295839777333871.pth"

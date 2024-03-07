@@ -48,7 +48,7 @@ rec_weight: 15
 rec_low_weight: [1,0]
 
 使用预训练的模型的话，最好的参数是：
-lr_scheduler_step: [10,17]
+lr_scheduler_step: [10,16]
 epoch: 20
 lr: 0.0001
 
@@ -138,10 +138,10 @@ def run(config):
     train_dataset=Exp3DMMdataset(config,type='train',frame_num=1)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=6, 
+        batch_size=5, 
         shuffle=True,
         drop_last=False,
-        num_workers=1,
+        num_workers=2,
         collate_fn=train_dataset.collater
     )
     # 验证集
@@ -220,7 +220,6 @@ def run(config):
             exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
             drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
             imgs = render(data['img'],drving_src )['fake_image']
-
 
             # 计算loss
             loss=loss_function(exp_result,imgs,data)

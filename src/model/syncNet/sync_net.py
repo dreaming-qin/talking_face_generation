@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+# test
 if __name__=='__main__':
     import os,sys
     path=sys.path[0]
@@ -10,6 +11,8 @@ if __name__=='__main__':
         path=os.path.dirname(path)
     sys.path.append(path)
     sys.path.append(os.path.join(path,'Deep3DFaceRecon_pytorch'))
+
+from src.util.model_util import cnt_params
 
 class Conv1d(nn.Module):
     def __init__(self, cin, cout, kernel_size, stride, padding, residual=False, *args, **kwargs):
@@ -72,6 +75,9 @@ class SyncNet(nn.Module):
             Conv1d(512, 512, kernel_size=3, stride=1, padding=0),
             Conv1d(512, 512, kernel_size=1, stride=1, padding=0),)
         self.logloss = nn.BCELoss()
+
+        cnt,_=cnt_params(self)
+        print(f"SyncNet total paras number: {cnt}")
 
     def forward(self, hubert, mouth_lm): 
         # hubert := (B, T=10, C=1024)

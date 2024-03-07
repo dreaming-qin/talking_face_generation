@@ -30,7 +30,6 @@ class Exp3DMM(nn.Module):
         self.video_encoder=VideoEncoder(**cfg['video_encoder'])
         self.fusion_module=Fusion(**cfg['fusion'])
 
-        # test
         audio_cnt,_=cnt_params(self.audio_encoder)
         print(f"audio_encoder total paras number: {audio_cnt}")
         video_cnt,_=cnt_params(self.video_encoder)
@@ -58,7 +57,11 @@ class Exp3DMM(nn.Module):
         # [B,len,win_size,video dim]
         video_feature=get_window(video_feature,self.win_size)
         video_feature=video_feature[:,self.win_size:-self.win_size]
-        exp3DMM=self.fusion_module(audio_feature,video_feature)
+
+        # # test，测试音频是否能同步唇形
+        exp3DMM=self.fusion_module(audio_feature,audio_feature)
+
+        # exp3DMM=self.fusion_module(audio_feature,video_feature)
         return exp3DMM
     
 # 测试代码
