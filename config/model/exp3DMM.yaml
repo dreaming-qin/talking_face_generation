@@ -44,13 +44,13 @@ render_win_size: 13
 # 面部遮罩大小
 mask_width: 100
 mask_height: 60
-device_id: [0]
+device_id: [1]
 checkpoint_dir: "checkpoint/exp3DMM"
 result_dir: "result/exp3DMM"
-epoch: 12
+epoch: 16
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [2,8]
+lr_scheduler_step: [6,12]
 
-exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_12_metrices_0.88260212565337.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_3_metrices_0.8332738599373.pth"
 render_pre_train: "checkpoint/render/edit_epoch_22_metrices_0.9295839777333871.pth"

@@ -236,7 +236,9 @@ def run(config):
         eval_metrices=eval(exp_model,render,eval_dataloader,checkpoint=None)
         test_logger.info(f'第{epoch}次后，对模型进行验证，验证获得的结果为{eval_metrices}')
         # 如果验证结果好，保存训练模型
-        if eval_metrices>best_metrices:
+        # test
+        # if eval_metrices>best_metrices:
+        if True:
             save_path=os.path.join(config['result_dir'],'epoch_{}'.format(epoch))
             save_result(exp_model,render,eval_dataloader,save_path,save_video_num=3)
             best_metrices=eval_metrices
