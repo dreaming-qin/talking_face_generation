@@ -46,8 +46,8 @@ class Exp3DMM(nn.Module):
         """
         # [B,len,audio dim]
         audio_feature=self.audio_encoder(audio_MFCC)
-        B,L,H,W,C=transformer_video.shape
-        transformer_video=transformer_video.reshape(-1,H,W,C)
+        B,L,C,H,W=transformer_video.shape
+        transformer_video=transformer_video.reshape(-1,C,H,W)
         video_feature=self.video_encoder(transformer_video)
 
         # # test，测试audio feature与video feature大小
@@ -62,7 +62,7 @@ class Exp3DMM(nn.Module):
         # self.load_state_dict(temp_dice)
         # o_audio_feature=self.audio_encoder(audio_MFCC).squeeze()
         # # 2. 获得新的audio feture
-        # state_dict=torch.load('checkpoint/exp3DMM/epoch_12_metrices_0.7648100996204362.pth',
+        # state_dict=torch.load('checkpoint/exp3DMM/epoch_18_metrices_0.6989557775132689.pth',
         #             map_location=torch.device('cpu'))
         # temp_dice={}
         # for key,value in state_dict.items():
@@ -71,6 +71,7 @@ class Exp3DMM(nn.Module):
         # n_audio_feature=self.audio_encoder(audio_MFCC).squeeze()
         # # 3. 合并音频特征
         # feature=torch.cat((o_audio_feature,n_audio_feature))
+        # # feature=torch.cat((audio_feature.squeeze(),video_feature))
         # feature=feature.cpu().numpy()
         # min_,max_=feature.min(),feature.max()
         # feature=(255*(feature-min_)/(max_-min_)).astype(np.uint8)
@@ -118,7 +119,7 @@ if __name__=='__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model=Exp3DMM(config)
     model= torch.nn.DataParallel(model, device_ids=config['device_id'])
-    state_dict=torch.load('checkpoint/exp3DMM/epoch_17_metrices_0.9269133167494708.pth',
+    state_dict=torch.load('checkpoint/exp3DMM/epoch_18_metrices_0.6989557775132689.pth',
                 map_location=torch.device('cpu'))
     model.load_state_dict(state_dict,strict=False)
     with torch.no_grad():

@@ -1,5 +1,23 @@
-landmark_dim: 40
-audio_dim: 1024
+# landmark_dim: 40
+# audio_dim: 1024
+
+
+video_encoder:
+  block_expansion: 24
+  num_channels: 3
+  max_features: 256
+  num_blocks: 4
+  # 改变这个可以改变图片的输入尺寸
+  scale_factor: 0.5
+
+
+audio_encoder:
+  num_encoder_layers: 7
+  feature_dim: 256
+  nhead: 8
+  feedforward_dim: 512
+  seq_len: 28
+
 
 # 训练参数
 epoch: 100000

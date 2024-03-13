@@ -13,83 +13,35 @@ if __name__=='__main__':
     sys.path.append(os.path.join(path,'Deep3DFaceRecon_pytorch'))
 
 from src.util.model_util import cnt_params
+from src.model.exp3DMM.audio_encoder import AudioEncoder
+from src.model.exp3DMM.video_encoder import VideoEncoder
+from src.util.util_3dmm import get_lm_by_3dmm, get_face
 
-class Conv1d(nn.Module):
-    def __init__(self, cin, cout, kernel_size, stride, padding, residual=False, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.conv_block = nn.Sequential(
-                            nn.Conv1d(cin, cout, kernel_size, stride, padding),
-                            nn.BatchNorm1d(cout)
-                            )
-        self.act = nn.ReLU()
-        self.residual = residual
-
-    def forward(self, x):
-        out = self.conv_block(x)
-        if self.residual:
-            out += x
-        return self.act(out)
 
 class SyncNet(nn.Module):
-    def __init__(self, landmark_dim,audio_dim,**_):
+    def __init__(self, cfg):
         super(SyncNet, self).__init__()
 
-        # hubert = torch.rand(B, 1, , t=10)
-        self.hubert_encoder = nn.Sequential(
-            Conv1d(audio_dim, 128, kernel_size=3, stride=1, padding=1),
-
-            Conv1d(128, 128, kernel_size=3, stride=1, padding=1),
-            Conv1d(128, 128, kernel_size=3, stride=1, padding=1, residual=True),
-            Conv1d(128, 128, kernel_size=3, stride=1, padding=1, residual=True),
-
-            Conv1d(128, 256, kernel_size=3, stride=2, padding=1),
-            Conv1d(256, 256, kernel_size=3, stride=1, padding=1, residual=True),
-            Conv1d(256, 256, kernel_size=3, stride=1, padding=1, residual=True),
-
-            Conv1d(256, 512, kernel_size=3, stride=2, padding=1),
-            Conv1d(512, 512, kernel_size=3, stride=1, padding=1, residual=True),
-            Conv1d(512, 512, kernel_size=3, stride=1, padding=1, residual=True),
-
-            Conv1d(512, 512, kernel_size=3, stride=1, padding=1),
-            Conv1d(512, 512, kernel_size=3, stride=1, padding=0),
-            Conv1d(512, 512, kernel_size=1, stride=1, padding=0),)
-
-
-        # mouth = torch.rand(B, 20*3, t=5)
-        self.mouth_encoder = nn.Sequential(
-            Conv1d(landmark_dim, 96, kernel_size=3, stride=1, padding=1),
-
-            Conv1d(96, 128, kernel_size=3, stride=1, padding=1),
-            Conv1d(128, 128, kernel_size=3, stride=1, padding=1, residual=True),
-            Conv1d(128, 128, kernel_size=3, stride=1, padding=1, residual=True),
-
-            Conv1d(128, 256, kernel_size=3, stride=2, padding=1),
-            Conv1d(256, 256, kernel_size=3, stride=1, padding=1, residual=True),
-            Conv1d(256, 256, kernel_size=3, stride=1, padding=1, residual=True),
-
-            Conv1d(256, 512, kernel_size=3, stride=1, padding=1),
-            Conv1d(512, 512, kernel_size=3, stride=1, padding=1, residual=True),
-            Conv1d(512, 512, kernel_size=3, stride=1, padding=1, residual=True),
-
-            Conv1d(512, 512, kernel_size=3, stride=1, padding=1),
-            Conv1d(512, 512, kernel_size=3, stride=1, padding=0),
-            Conv1d(512, 512, kernel_size=1, stride=1, padding=0),)
-        self.logloss = nn.BCELoss()
+        self.audio_encoder=AudioEncoder(**cfg['audio_encoder'])
+        self.video_encoder=VideoEncoder(**cfg['video_encoder'])
 
         cnt,_=cnt_params(self)
         print(f"SyncNet total paras number: {cnt}")
 
-    def forward(self, hubert, mouth_lm): 
-        # hubert := (B, T=10, C=1024)
-        # mouth_lm3d := (B, T=5, C=60)
-        hubert = hubert.transpose(1,2)
-        mouth_lm = mouth_lm.transpose(1,2)
-        mouth_embedding = self.mouth_encoder(mouth_lm)
-        audio_embedding = self.hubert_encoder(hubert)
-        audio_embedding = audio_embedding.view(audio_embedding.size(0), -1)
-        mouth_embedding = mouth_embedding.view(mouth_embedding.size(0), -1)
-        audio_embedding = F.normalize(audio_embedding, p=2, dim=1)
-        mouth_embedding = F.normalize(mouth_embedding, p=2, dim=1)
+    def forward(self, audio_mfcc, mouth_img): 
+        """transformer_video输入维度[b,3,H,W]
+        audio_MFCC输入维度[B,28,mfcc dim]"""
+
+        # [B,len,audio dim]
+        B,L,dim=audio_mfcc.shape
+        # [B, audio feature dim]
+        audio_feature=self.audio_encoder(audio_mfcc.reshape(B,1,L,dim))
+        # [B, video feature dim]
+        video_feature=self.video_encoder(mouth_img)
+
+        audio_embedding = F.normalize(audio_feature, p=2, dim=1)
+        mouth_embedding = F.normalize(video_feature, p=2, dim=1)
+
         return audio_embedding, mouth_embedding
 
 
@@ -127,7 +79,15 @@ if __name__ == '__main__':
     for data in dataloader:
         for key,value in data.items():
             data[key]=value.to(device)
-        a_e,m_e=syncnet(data['hubert'],data['mouth_landmark'])
+
+        # 将exp和id转为灰度图
+        mouth_img=get_face(data[f'id'].reshape(-1,80),
+            data[f'exp'].reshape(-1,64))[...,120:170,70:150]
+        # 转灰度图
+        mouth_gray=0.299*mouth_img[...,0]+0.587*mouth_img[...,1]+0.114*mouth_img[...,2]
+        # 转成256*256大小的唇部图形
+
+        a_e,m_e=syncnet(data['mfcc'],mouth_gray)
         ccc=loss_fun(a_e,m_e,data['label'])
         print(ccc)
 

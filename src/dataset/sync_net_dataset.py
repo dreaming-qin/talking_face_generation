@@ -37,8 +37,8 @@ class SyncNetDataset(torch.utils.data.Dataset):
         return len(self.filenames)
 
     def __getitem__(self, idx):
-        r'''获得id和exp，用于等会合成landmark
-            获得hubert
+        r'''1.获得id和exp，用于等会合成唇部图片
+            2. 获得mfcc
         '''
         out={}
         sample=self.filenames[idx]
@@ -47,96 +47,84 @@ class SyncNetDataset(torch.utils.data.Dataset):
             byte_file=f.read()
         byte_file=zlib.decompress(byte_file)
         data= pickle.loads(byte_file)
-        data_3DMM=data['face_coeff']['coeff']
 
+        # 1. 获得3DMM 
+        data_3DMM=data['face_coeff']['coeff']
         face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
         face3d_exp=torch.tensor(face3d_exp).float()
-
         face3d_id=data_3DMM[:, 0:80]
         face3d_id=torch.tensor(face3d_id).float()
 
-        hubert=torch.tensor(data['audio_hugebert']).float()
+        #  2.获得mfcc
+        mfcc=torch.tensor(data['audio_mfcc']).float()
 
-        # 对齐3dmm数据和hubert
-        if len(face3d_exp)*2<len(hubert):
-            hubert=hubert[:len(face3d_exp)*2]
+        # 对齐3dmm数据和mfcc
+        if len(face3d_exp)<len(mfcc):
+            mfcc=mfcc[:len(face3d_exp)]
         else:
-            face3d_exp=face3d_exp[:len(hubert)//2]
-            face3d_id=face3d_id[:len(hubert)//2]
+            face3d_exp=face3d_exp[:len(mfcc)]
+            face3d_id=face3d_id[:len(mfcc)]
         
-        out['hubert']=hubert
-        mouth_lamdmark=get_lm_by_3dmm(face3d_id,face3d_exp)[:,48:]
-        mouth_lamdmark=mouth_lamdmark.detach()
-        # 得到mouth landmark后，因为要作为模型输入，需要标准化到（-1,1）中
-        # 1.按照原点对齐
-        original = torch.sum(mouth_lamdmark,dim=1) / mouth_lamdmark.shape[1]
-        mouth_lamdmark =mouth_lamdmark - original.reshape(-1,1,2)
-        # 2.规整到（-1,1）中
-        mouth_lamdmark=mouth_lamdmark.permute(0,2,1).reshape(-1,40)
-        max_lmd=torch.max(torch.abs(mouth_lamdmark),dim=1)[0]
-        mouth_lamdmark=(mouth_lamdmark.T/max_lmd).T
-        out['mouth_landmark']=mouth_lamdmark
+        # 放数据
+        out['mfcc']=mfcc
+        out['exp']=face3d_exp
+        out['id']=face3d_id
         return out
 
-    def get_sample_per_video(self,mouth_landmark,hubert):
+    def get_sample_per_video(self,exp_3dmm,id_3dmm,mfcc):
         r'''获得所有样例后，从样例中拿取正负样本
         输入：
-            mouth_landmark：(B,len[i],20*2)，tensor
-            hubert：(B, len[i],2, 1024)，tensor
+            exp_3dmm(B,len[i],64)，tensor
+            id_3dmm(B,len[i],80)，tensor
+            mfcc(B,len[i],28,12)，tensor
         输出：
-            landmark：(B*sample_per_video, 5, 20*2)，tensor
-            hubert：(B*sample_per_video, 10, 1024)，tensor
+            exp_3dmm(B*sample_per_video,64)，tensor
+            id_3dmm(B*sample_per_video,80)，tensor
+            mfcc(B*sample_per_video,28,12)，tensor
             label：(B*sample_per_video), tensor，正样本是1，负样本是0
         '''
 
-        # 随机获得数据
-        y_len=[len(c) for c in mouth_landmark]
-        mouth_lst, mel_lst, label_lst = [], [], []
-        while len(mouth_lst) < len(hubert)*self.sample_per_video:
-            for i in range(len(mouth_landmark)):
+        y_len=[len(c) for c in mfcc]
+        exp_lst, id_lst,mfcc_lst, label_lst = [], [], [],[]
+        for video_idx in range(len(mfcc)):
+            for _ in range(self.sample_per_video):
                 if self.type=='train':
                     is_pos_sample = random.choice([True, False])
                 else:
                     is_pos_sample = True
-                exp_idx = random.randint(a=0, b=y_len[i]-1-5)
-                mouth_clip = mouth_landmark[i][exp_idx: exp_idx+5]
-                assert mouth_clip.shape[0]==5, f"exp_idx={exp_idx},y_len={y_len[i]}"
+                choose_idx = random.randint(a=0, b=y_len[video_idx]-1)
+                exp_clip=exp_3dmm[video_idx][choose_idx]
+                id_clip=id_3dmm[video_idx][choose_idx]
                 if is_pos_sample:
-                    mel_clip = hubert[i][exp_idx*2: exp_idx*2 + 10]
+                    mouth_clip = mfcc[video_idx][choose_idx]
                     label_lst.append(1.)
                 else:
                     random_cnt=random.random()
-                    if  random_cnt< 0.25:
-                        wrong_spk_idx = random.randint(a=0, b=len(y_len)-1)
-                        wrong_exp_idx = random.randint(a=0, b=y_len[wrong_spk_idx]-1-5)
-                        while wrong_exp_idx == exp_idx:
-                            wrong_exp_idx = random.randint(a=0, b=y_len[wrong_spk_idx]-1-5)
-                        mel_clip = hubert[wrong_spk_idx][wrong_exp_idx*2: wrong_exp_idx*2 + 10]
-                        assert mel_clip.shape[0]==10
-                    elif random_cnt < 0.5:
-                        wrong_exp_idx = random.randint(a=0, b=y_len[i]-1-5)
-                        while wrong_exp_idx == exp_idx:
-                            wrong_exp_idx = random.randint(a=0, b=y_len[i]-1-5)
-                        mel_clip = hubert[i][wrong_exp_idx*2: wrong_exp_idx*2 + 10]
-                        assert mel_clip.shape[0]==10
-                    else:
-                        left_offset = max(-5, -exp_idx)
-                        right_offset = min(5, (y_len[i]-5-exp_idx))
-                        exp_offset = random.randint(a=left_offset, b=right_offset)
-                        while abs(exp_offset) <= 1:
-                            exp_offset = random.randint(a=left_offset, b=right_offset)
-                        wrong_exp_idx = exp_offset + exp_idx
-                        mel_clip = hubert[i][wrong_exp_idx*2: wrong_exp_idx*2 + 10]
-                        assert mel_clip.shape[0]==10, y_len[i]-wrong_exp_idx
+                    if  random_cnt< 0.5:
+                        # 从别人的视频中选MFCC
+                        wrong_video_idx = video_idx
+                        while wrong_video_idx == video_idx:
+                            wrong_video_idx = random.randint(a=0, b=len(y_len)-1)
+                        wrong_choose_idx = random.randint(a=0, b=y_len[wrong_video_idx]-1)
+                        mouth_clip = mfcc[wrong_video_idx][wrong_choose_idx]
+                    else :
+                        # 从自己的视频中选MFCC
+                        wrong_choose_idx = choose_idx
+                        while abs(wrong_choose_idx-choose_idx)<5:
+                            wrong_choose_idx = random.randint(a=0, b=y_len[video_idx]-1)
+                        mouth_clip = mfcc[video_idx][wrong_choose_idx]
                     label_lst.append(0.)
-                mouth_lst.append(mouth_clip)
-                mel_lst.append(mel_clip)
-        
-        mel_clips = torch.stack(mel_lst)
-        mouth_clips = torch.stack(mouth_lst).reshape(len(mouth_lst),5,-1)
+                exp_lst.append(exp_clip)
+                id_lst.append(id_clip)
+                mfcc_lst.append(mouth_clip)
+
+
+        mfcc_lst = torch.stack(mfcc_lst)
+        id_lst = torch.stack(id_lst)
+        exp_lst = torch.stack(exp_lst)
         labels = torch.tensor(label_lst).float()
         
-        return mouth_clips,mel_clips,labels
+        return exp_lst,id_lst,mfcc_lst,labels
 
     def collater(self, samples):
         r'''需要hugbert和唇部旁边的20个landmark，landmark注意归一化
@@ -145,10 +133,11 @@ class SyncNetDataset(torch.utils.data.Dataset):
                 landmark: [frame,40]
         '''
         # 对齐数据
-        landmark=[s['mouth_landmark'] for s in samples]
-        hubert=[s['hubert'] for s in samples]
-        landmark,hubert,label=self.get_sample_per_video(landmark,hubert)
-        data={'hubert':hubert,'mouth_landmark':landmark,'label':label}
+        mfcc=[s['mfcc'] for s in samples]
+        face3d_exp=[s['exp'] for s in samples]
+        face3d_id=[s['id'] for s in samples]
+        face3d_exp,face3d_id,mfcc,label=self.get_sample_per_video(face3d_exp,face3d_id,mfcc)
+        data={'exp':face3d_exp,'id':face3d_id,'mfcc':mfcc,'label':label}
         return data
 
 # 测试代码

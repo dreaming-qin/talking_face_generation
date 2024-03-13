@@ -25,10 +25,10 @@ class AudioEncoder(nn.Module):
         encoder_norm = nn.LayerNorm(feature_dim)
         self.encoder = nn.TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
 
-        self.self_atten=SelfAttentionPooling(input_dim=feature_dim)
-
         # 音频长度28
         self.pos=PositionalEncoding(feature_dim, n_position=seq_len)
+
+        self.self_atten=SelfAttentionPooling(input_dim=feature_dim)
 
 
 
