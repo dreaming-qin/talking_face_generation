@@ -22,9 +22,18 @@ video_encoder:
   # 改变这个可以改变图片的输入尺寸
   scale_factor: 0.5
 
+
+audio_encoder:
+  num_encoder_layers: 7
+  feature_dim: 256
+  nhead: 8
+  feedforward_dim: 512
+  seq_len: 28
+
+
 # loss函数的
-#比较唇部landmark用的
-landmark_weight: 10
+#比较唇部区域用的
+mouth_weight: 1
 # 直接比较3DMM用的
 exp_weight: 4
 # 唇形同步器用的
@@ -47,10 +56,10 @@ mask_height: 60
 device_id: [1]
 checkpoint_dir: "checkpoint/exp3DMM"
 result_dir: "result/exp3DMM"
-epoch: 16
+epoch: 20
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [6,12]
+lr_scheduler_step: [10,16]
 
-exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_3_metrices_0.8332738599373.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_17_metrices_0.9269133167494708.pth"
 render_pre_train: "checkpoint/render/edit_epoch_22_metrices_0.9295839777333871.pth"

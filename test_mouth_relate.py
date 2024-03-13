@@ -127,12 +127,12 @@ if __name__=='__main__':
             error_dict[i]['no_face']+=error.sum().item()-face_error
 
             # # test，存图片，左边是原图，右边是3dmm加1后的图片
-            for j in range(1):
-                real_img=gt_gray[j].cpu().numpy()
-                fake_img=gray[j].cpu().numpy()
-                img=np.concatenate((real_img,fake_img),axis=1)
-                img=(img*255).astype(np.uint8)
-                imageio.imsave(f'temp/{i}.png',img)
+            # for j in range(1):
+            #     real_img=gt_gray[j].cpu().numpy()
+            #     fake_img=gray[j].cpu().numpy()
+            #     img=np.concatenate((real_img,fake_img),axis=1)
+            #     img=(img*255).astype(np.uint8)
+            #     imageio.imsave(f'temp/{i}.png',img)
 
 
             # # landmark版本的

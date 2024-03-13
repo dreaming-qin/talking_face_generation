@@ -26,7 +26,7 @@ class Exp3DMM(nn.Module):
     '''
     def __init__(self,cfg) :
         super().__init__()
-        self.audio_encoder=AudioEncoder()
+        self.audio_encoder=AudioEncoder(**cfg['audio_encoder'])
         self.video_encoder=VideoEncoder(**cfg['video_encoder'])
         self.fusion_module=Fusion(**cfg['fusion'])
 
@@ -49,6 +49,34 @@ class Exp3DMM(nn.Module):
         B,L,H,W,C=transformer_video.shape
         transformer_video=transformer_video.reshape(-1,H,W,C)
         video_feature=self.video_encoder(transformer_video)
+
+        # # test，测试audio feature与video feature大小
+        # import imageio
+        # import numpy as np
+        # # 1.获得原来的audio feature
+        # state_dict=torch.load('checkpoint/exp3DMM/epoch_17_metrices_0.9269133167494708.pth',
+        #             map_location=torch.device('cpu'))
+        # temp_dice={}
+        # for key,value in state_dict.items():
+        #     temp_dice[key[7:]]=value
+        # self.load_state_dict(temp_dice)
+        # o_audio_feature=self.audio_encoder(audio_MFCC).squeeze()
+        # # 2. 获得新的audio feture
+        # state_dict=torch.load('checkpoint/exp3DMM/epoch_12_metrices_0.7648100996204362.pth',
+        #             map_location=torch.device('cpu'))
+        # temp_dice={}
+        # for key,value in state_dict.items():
+        #     temp_dice[key[7:]]=value
+        # self.load_state_dict(temp_dice)
+        # n_audio_feature=self.audio_encoder(audio_MFCC).squeeze()
+        # # 3. 合并音频特征
+        # feature=torch.cat((o_audio_feature,n_audio_feature))
+        # feature=feature.cpu().numpy()
+        # min_,max_=feature.min(),feature.max()
+        # feature=(255*(feature-min_)/(max_-min_)).astype(np.uint8)
+        # imageio.imsave('temp_oa2na.png',feature)
+
+
         # [B,Len,video dim]
         video_feature=video_feature.reshape(B,L,-1)
         # [B,len,win_size,audio dim]
@@ -58,7 +86,8 @@ class Exp3DMM(nn.Module):
         video_feature=get_window(video_feature,self.win_size)
         video_feature=video_feature[:,self.win_size:-self.win_size]
 
-        # # test，测试音频是否能同步唇形
+
+        # test，测试音频是否能同步唇形
         exp3DMM=self.fusion_module(audio_feature,audio_feature)
 
         # exp3DMM=self.fusion_module(audio_feature,video_feature)
@@ -88,7 +117,10 @@ if __name__=='__main__':
     )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model=Exp3DMM(config)
-    model=model.to(device)
+    model= torch.nn.DataParallel(model, device_ids=config['device_id'])
+    state_dict=torch.load('checkpoint/exp3DMM/epoch_17_metrices_0.9269133167494708.pth',
+                map_location=torch.device('cpu'))
+    model.load_state_dict(state_dict,strict=False)
     with torch.no_grad():
         for data in dataloader:
             for key,value in data.items():

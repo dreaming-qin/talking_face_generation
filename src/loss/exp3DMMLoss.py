@@ -16,7 +16,7 @@ if __name__=='__main__':
 from src.model.syncNet.sync_net import SyncNet
 from src.util.model_util import freeze_params
 from src.loss.renderLoss import RenderLoss
-from src.util.util_3dmm import get_lm_by_3dmm
+from src.util.util_3dmm import get_lm_by_3dmm, get_face
 from src.loss.sync_net_loss import SyncNetLoss
 
 class Exp3DMMLoss(nn.Module):
@@ -24,7 +24,7 @@ class Exp3DMMLoss(nn.Module):
     def __init__(self, config,device):
         super(Exp3DMMLoss, self).__init__()
         self.device=device
-        self.landmark_weight=config['landmark_weight']
+        self.mouth_weight=config['mouth_weight']
         self.exp_weight=config['exp_weight']
         self.rec_weight=config['rec_weight']
         self.sync_weight=config['sync_weight']
@@ -64,16 +64,42 @@ class Exp3DMMLoss(nn.Module):
             # tdmm_loss*=self.exp_weight
             # loss+=tdmm_loss
 
-            # 第二部分，唇部landmark比较
-            real_landmark=get_lm_by_3dmm(data[f'{type}id_3dmm'].reshape(-1,80),
-                                         data[f'{type}gt_3dmm'].reshape(-1,64))
-            fake_landmark=get_lm_by_3dmm(data[f'{type}id_3dmm'].reshape(-1,80),
-                                        predict[f'{type}exp'].reshape(-1,64))
-            fake_mouth_landmark=fake_landmark[:,48:]
-            real_mouth_landmark=real_landmark[:,48:]
-            landmark_loss=self.L1_loss(fake_mouth_landmark,real_mouth_landmark)
-            landmark_loss*=self.landmark_weight
-            loss+=landmark_loss
+            # 第二部分，唇部区域比较比较
+            real_mouth=get_face(data[f'{type}id_3dmm'].reshape(-1,80),
+                data[f'{type}gt_3dmm'].reshape(-1,64))[...,120:170,70:150]
+            fake_mouth=get_face(data[f'{type}id_3dmm'].reshape(-1,80),
+                predict[f'{type}exp'].reshape(-1,64))[...,120:170,70:150]
+            real_mouth=real_mouth.permute(0,2,3,1)
+            fake_mouth=fake_mouth.permute(0,2,3,1)
+            # 转灰度图
+            real_gray=0.299*real_mouth[...,0]+0.587*real_mouth[...,1]+0.114*real_mouth[...,2]
+            fake_gray=0.299*fake_mouth[...,0]+0.587*fake_mouth[...,1]+0.114*fake_mouth[...,2]
+            # 比较
+            mouth_loss=self.L1_loss(real_gray,fake_gray)
+            mouth_loss*=self.mouth_weight
+            loss+=mouth_loss
+
+            # test，测试灰度图
+            # import numpy as np
+            # import imageio
+            # for j in range(len(fake_gray)):
+            #     real_img=real_gray[j].detach().cpu().numpy()
+            #     fake_img=fake_gray[j].detach().cpu().numpy()
+            #     img=np.concatenate((real_img,fake_img),axis=1)
+            #     img=(img*255).astype(np.uint8)
+            #     imageio.imsave(f'temp/{j}.png',img)
+
+
+            # real_landmark=get_lm_by_3dmm(data[f'{type}id_3dmm'].reshape(-1,80),
+            #                              data[f'{type}gt_3dmm'].reshape(-1,64))
+            # fake_landmark=get_lm_by_3dmm(data[f'{type}id_3dmm'].reshape(-1,80),
+            #                             predict[f'{type}exp'].reshape(-1,64))
+            # fake_mouth_landmark=fake_landmark[:,48:]
+            # real_mouth_landmark=real_landmark[:,48:]
+            # landmark_loss=self.L1_loss(fake_mouth_landmark,real_mouth_landmark)
+            # landmark_loss*=self.landmark_weight
+            # loss+=landmark_loss
+
 
             # 第三部分唇形监督器loss
             # if self.sync_net is not None:

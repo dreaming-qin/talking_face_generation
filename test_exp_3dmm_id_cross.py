@@ -223,10 +223,10 @@ if __name__ == '__main__':
     config['video_num']=100
 
     # 当前的输入文件为了省事，是面向已经处理好的pkl文件
-    # config['audio_file']='data_mead/format_data/test/0/M003_front_angry_level_3_011.pkl'
-    config['audio_file']='data_mead/format_data/test/0/M019_front_happy_level_1_025.pkl'
+    config['audio_file']='data_mead/format_data/test/0/M003_front_angry_level_3_011.pkl'
+    # config['audio_file']='data_mead/format_data/test/0/M019_front_happy_level_1_025.pkl'
     config['img_file']='data_mead/format_data/test/0/W016_front_sad_level_2_015.pkl'
-    config['pose_file']='data_mead/format_data/test/0/M003_front_angry_level_3_011.pkl'
+    config['pose_file']='data_mead/format_data/test/0/M019_front_happy_level_1_025.pkl'
 
 
     generate_video(config)
