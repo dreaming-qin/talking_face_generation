@@ -1,5 +1,6 @@
 from torch import nn
 import torch
+torch.functional
 
 
 # 测试代码
@@ -19,7 +20,6 @@ class SyncNetLoss(nn.Module):
     def __init__(self):
         super(SyncNetLoss, self).__init__()
         self.logloss = nn.BCELoss()
-        self.relu=nn.ReLU()
 
     def forward(self, audio_embedding, mouth_embedding, label):
         r'''
@@ -29,14 +29,10 @@ class SyncNetLoss(nn.Module):
             label (B), tensor
         '''
         gt_d = label.float().view(-1,1).to(audio_embedding.device)
+        # 取值为[-1,1]
         d = nn.functional.cosine_similarity(audio_embedding, mouth_embedding)
-
-        # gt_d=gt_d.reshape(-1)
-        # one_index=torch.nonzero(gt_d>0.5,as_tuple=True)
-        # one_cos=d[one_index]
-        # zero_index=torch.nonzero(gt_d<0.5,as_tuple=True)
-        # zero_cos=d[zero_index]
-        # loss=(1-one_cos).mean()+self.relu(zero_cos-0.3).mean()
+        # 归一化到[0,1]中
+        d=(d+1)/2
 
         loss = self.logloss(d.unsqueeze(1), gt_d)
 

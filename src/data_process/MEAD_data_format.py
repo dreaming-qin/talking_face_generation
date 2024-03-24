@@ -260,7 +260,7 @@ if __name__=='__main__':
     # dir_list=dir_list[index:]
 
     # test
-    dir_list=['data']
+    dir_list=['result/exp3DMM/result/merge']
     for file_list in dir_list:
         format_data(file_list)
     #     merge_data(file_list)

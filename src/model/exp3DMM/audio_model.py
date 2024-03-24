@@ -13,48 +13,40 @@ if __name__=='__main__':
 
 
 
-from src.model.exp3DMM.audio_model import AudioModel
-from src.model.exp3DMM.video_model import VideoModel
-from src.util.model_util import cnt_params
+from src.model.exp3DMM.audio_encoder import AudioEncoder
+from src.model.exp3DMM.fusion import Fusion
+from src.util.util import get_window
 
 
-class Exp3DMM(nn.Module):
+class AudioModel(nn.Module):
     '''
     输入音频MFCC和transformer后的视频，输出表情3DMM
     '''
     def __init__(self,cfg) :
         super().__init__()
 
-        self.audio_model=AudioModel(cfg)
-        self.audio_exp_list=[0,1,2,3,4,5,7,10,13]
-        cfg['audio_exp_len']=len(self.audio_exp_list)
-        self.video_model=VideoModel(cfg)
-        
+        self.audio_encoder=AudioEncoder(**cfg['audio_encoder'])
+        self.fusion_module=Fusion(**cfg['fusion'])
+
         self.win_size=cfg['audio_win_size']
 
-
-        audio_cnt,_=cnt_params(self.audio_model)
-        print(f"audio_model total paras number: {audio_cnt}")
-        video_cnt,_=cnt_params(self.video_model)
-        print(f"video_model total paras number: {video_cnt}")
-        
-
-    def forward(self, transformer_video, audio_MFCC):
-        """transformer_video输入维度[b,len,3,H,W]
-        audio_MFCC输入维度[B,LEN,28,mfcc dim]
-        输出维度都是[B,len,3dmm dim]
+    def forward(self,  audio_MFCC):
         """
-        # [B,len(37),3dmm dim(64)]
-        audio_exp=self.audio_model(audio_MFCC)
-        # 抽出影响最大的n维
-        audio_choose_exp_detach=audio_exp[...,self.audio_exp_list].detach()
+        audio_MFCC输入维度[B,LEN(37),28,mfcc dim]
+        输出维度[B,len(37),3dmm dim(64)]
+        """
+        # [B,len,audio dim]
+        audio_feature=self.audio_encoder(audio_MFCC)
 
-        # [B,len(27),3dmm dim(64)]
-        video_exp=self.video_model(transformer_video,audio_choose_exp_detach)
 
-        video_exp[...,self.audio_exp_list]+=audio_choose_exp_detach[:,self.win_size:-self.win_size]
-        
-        return audio_exp,video_exp
+        # [B,len,win_size,audio dim]
+        audio_feature=get_window(audio_feature,self.win_size)
+        # audio_feature=audio_feature[:,self.win_size:-self.win_size]
+
+        # test，测试音频是否能同步唇形
+        exp3DMM=self.fusion_module(audio_feature,audio_feature)
+
+        return exp3DMM
     
 # 测试代码
 if __name__=='__main__':

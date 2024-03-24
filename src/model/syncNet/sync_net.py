@@ -25,24 +25,25 @@ class SyncNet(nn.Module):
         self.audio_encoder=AudioEncoder(**cfg['audio_encoder'])
         self.video_encoder=VideoEncoder(**cfg['video_encoder'])
 
-        cnt,_=cnt_params(self)
-        print(f"SyncNet total paras number: {cnt}")
+        cnt,_=cnt_params(self.audio_encoder)
+        print(f"SyncNet audio_encoder total paras number: {cnt}")
+        cnt,_=cnt_params(self.video_encoder)
+        print(f"SyncNet video_encoder total paras number: {cnt}")
 
     def forward(self, audio_mfcc, mouth_img): 
         """transformer_video输入维度[b,3,H,W]
         audio_MFCC输入维度[B,28,mfcc dim]"""
 
-        # [B,len,audio dim]
-        B,L,dim=audio_mfcc.shape
         # [B, audio feature dim]
-        audio_feature=self.audio_encoder(audio_mfcc.reshape(B,1,L,dim))
+        audio_feature=self.audio_encoder(audio_mfcc.unsqueeze(1))
+        audio_feature=audio_feature.squeeze(1)
         # [B, video feature dim]
         video_feature=self.video_encoder(mouth_img)
 
-        audio_embedding = F.normalize(audio_feature, p=2, dim=1)
-        mouth_embedding = F.normalize(video_feature, p=2, dim=1)
+        audio_feature = F.normalize(audio_feature, p=2, dim=1)
+        video_feature = F.normalize(video_feature, p=2, dim=1)
 
-        return audio_embedding, mouth_embedding
+        return audio_feature,video_feature
 
 
 
@@ -71,23 +72,22 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-    syncnet = SyncNet(**config)
+    syncnet = SyncNet(config)
     syncnet=syncnet.to(device)
 
     loss_fun=SyncNetLoss()
+    with torch.no_grad():
+        for data in dataloader:
+            for key,value in data.items():
+                data[key]=value.to(device)
 
-    for data in dataloader:
-        for key,value in data.items():
-            data[key]=value.to(device)
+            # 将exp和id转为灰度图[B,3,H,W]
+            mouth_img=get_face(data[f'id'].reshape(-1,80),
+                data[f'exp'].reshape(-1,64))[...,120:170,70:150]
+            # 转成256*256大小的唇部图形
+            mouth_img = F.interpolate(mouth_img, mode='bilinear', size=(256,256),align_corners=False)
 
-        # 将exp和id转为灰度图
-        mouth_img=get_face(data[f'id'].reshape(-1,80),
-            data[f'exp'].reshape(-1,64))[...,120:170,70:150]
-        # 转灰度图
-        mouth_gray=0.299*mouth_img[...,0]+0.587*mouth_img[...,1]+0.114*mouth_img[...,2]
-        # 转成256*256大小的唇部图形
-
-        a_e,m_e=syncnet(data['mfcc'],mouth_gray)
-        ccc=loss_fun(a_e,m_e,data['label'])
-        print(ccc)
+            a_e,v_e=syncnet(data['mfcc'],mouth_img)
+            ccc=loss_fun(a_e,v_e,data['label'])
+            print(ccc)
 

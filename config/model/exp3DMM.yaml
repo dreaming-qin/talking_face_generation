@@ -33,9 +33,9 @@ audio_encoder:
 
 # loss函数的
 #比较唇部区域用的
-mouth_weight: 1
+mouth_weight: 4
 # 直接比较3DMM用的
-exp_weight: 4
+exp_weight: 1
 # 唇形同步器用的
 sync_weight: 1
 # 重构权重
@@ -43,7 +43,7 @@ rec_weight: 15
 # rec_low_weight中，第一项是L1 loss，第二项是ssim
 rec_low_weight: [1,0]
 # 唇形同步器
-sync_net_pre_train: "checkpoint/syncNet/epoch_18_metrices_0.6473926901817322.pth"
+# sync_net_pre_train: "checkpoint/syncNet/epoch_18_metrices_0.6473926901817322.pth"
 landmark_dim: 40
 audio_dim: 1024
 
@@ -61,5 +61,5 @@ lr: 0.0001
 # 在lr_scheduler_step后改变学习率
 lr_scheduler_step: [10,16]
 
-exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_17_metrices_0.9269133167494708.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_11_metrices_0.8804439955188569.pth"
 render_pre_train: "checkpoint/render/edit_epoch_22_metrices_0.9295839777333871.pth"

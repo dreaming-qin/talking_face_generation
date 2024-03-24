@@ -13,48 +13,57 @@ if __name__=='__main__':
 
 
 
-from src.model.exp3DMM.audio_model import AudioModel
-from src.model.exp3DMM.video_model import VideoModel
-from src.util.model_util import cnt_params
+from src.model.exp3DMM.video_encoder import VideoEncoder
+from src.model.exp3DMM.fusion import Fusion
+from src.util.util import get_window
 
 
-class Exp3DMM(nn.Module):
+class VideoModel(nn.Module):
     '''
     输入音频MFCC和transformer后的视频，输出表情3DMM
     '''
     def __init__(self,cfg) :
         super().__init__()
 
-        self.audio_model=AudioModel(cfg)
-        self.audio_exp_list=[0,1,2,3,4,5,7,10,13]
-        cfg['audio_exp_len']=len(self.audio_exp_list)
-        self.video_model=VideoModel(cfg)
-        
+        self.video_encoder=VideoEncoder(**cfg['video_encoder'])
+        self.mapping=nn.Sequential(
+            nn.Linear(cfg['audio_exp_len'],32),
+            nn.Linear(32,64),
+            nn.ReLU(True),
+            nn.Linear(64,128),
+            nn.ReLU(True),
+            nn.Linear(128,256),
+            nn.ReLU(True),
+            nn.Linear(256,256),)
+        self.fusion_module=Fusion(**cfg['fusion'])
+
         self.win_size=cfg['audio_win_size']
 
-
-        audio_cnt,_=cnt_params(self.audio_model)
-        print(f"audio_model total paras number: {audio_cnt}")
-        video_cnt,_=cnt_params(self.video_model)
-        print(f"video_model total paras number: {video_cnt}")
-        
-
-    def forward(self, transformer_video, audio_MFCC):
+    def forward(self, transformer_video, audio_exp):
         """transformer_video输入维度[b,len,3,H,W]
-        audio_MFCC输入维度[B,LEN,28,mfcc dim]
-        输出维度都是[B,len,3dmm dim]
+        audio_exp输入维度[B,LEN(27),3dmm dim(9)]
+        输出维度[B,len(27),3dmm dim(64)]
         """
-        # [B,len(37),3dmm dim(64)]
-        audio_exp=self.audio_model(audio_MFCC)
-        # 抽出影响最大的n维
-        audio_choose_exp_detach=audio_exp[...,self.audio_exp_list].detach()
+        # [B,len,video dim]
+        B,L,C,H,W=transformer_video.shape
+        transformer_video=transformer_video.reshape(-1,C,H,W)
+        video_feature=self.video_encoder(transformer_video)
 
-        # [B,len(27),3dmm dim(64)]
-        video_exp=self.video_model(transformer_video,audio_choose_exp_detach)
 
-        video_exp[...,self.audio_exp_list]+=audio_choose_exp_detach[:,self.win_size:-self.win_size]
-        
-        return audio_exp,video_exp
+        # [B,Len,video dim]
+        video_feature=video_feature.reshape(B,L,-1)
+        # [B,len,win_size,video dim]
+        video_feature=get_window(video_feature,self.win_size)
+        video_feature=video_feature[:,self.win_size:-self.win_size]
+
+        audio_exp_mapping=self.mapping(audio_exp)
+        # [B,len,win_size,video dim]
+        audio_exp_mapping=get_window(audio_exp_mapping,self.win_size)
+        audio_exp_mapping=audio_exp_mapping[:,self.win_size:-self.win_size]
+        # test，测试音频是否能同步唇形
+        exp3DMM=self.fusion_module(video_feature,audio_exp_mapping)
+
+        return exp3DMM
     
 # 测试代码
 if __name__=='__main__':

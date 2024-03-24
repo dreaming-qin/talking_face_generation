@@ -140,12 +140,12 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
                 mask=data['mouth_mask'][index]
                 if mask[1]-mask[0]>0 and mask[3]-mask[2]>0:
                     top,bottom,left,right=mask
-                    top=max(0,min(top,top-((self.mask_height-bottom+top)//2)))
-                    bottom=min(img.shape[0],max(bottom,bottom+((self.mask_height-bottom+top)//2)))
-                    left=max(0,min(left,left-((self.mask_width-right+left)//2)))
-                    right=min(img.shape[1],max(right,right+((self.mask_width-right+left)//2)))
-                    noise=np.random.randint(0,256,(bottom-top,right-left,3))
-                    img[top:bottom,left:right]=noise
+                    top_temp=max(0,min(top,top-((self.mask_height-bottom+top)//2)))
+                    bottom_temp=min(img.shape[0],max(bottom,bottom+((self.mask_height-bottom+top)//2)))
+                    left_temp=max(0,min(left,left-((self.mask_width-right+left)//2)))
+                    right_temp=min(img.shape[1],max(right,right+((self.mask_width-right+left)//2)))
+                    noise=np.random.randint(0,256,(bottom_temp-top_temp,right_temp-left_temp,3))
+                    img[top_temp:bottom_temp,left_temp:right_temp]=noise
                 temp.append(img)
                 # # test
                 # imageio.imsave('temp1.jpg',data['face_video'][index])

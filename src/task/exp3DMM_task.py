@@ -138,7 +138,7 @@ def run(config):
     train_dataset=Exp3DMMdataset(config,type='train',frame_num=1)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=5, 
+        batch_size=4, 
         shuffle=True,
         drop_last=False,
         num_workers=2,
@@ -236,9 +236,8 @@ def run(config):
         eval_metrices=eval(exp_model,render,eval_dataloader,checkpoint=None)
         test_logger.info(f'第{epoch}次后，对模型进行验证，验证获得的结果为{eval_metrices}')
         # 如果验证结果好，保存训练模型
-        # test
-        # if eval_metrices>best_metrices:
-        if True:
+        if eval_metrices>best_metrices:
+        # if True:
             save_path=os.path.join(config['result_dir'],'epoch_{}'.format(epoch))
             save_result(exp_model,render,eval_dataloader,save_path,save_video_num=3)
             best_metrices=eval_metrices

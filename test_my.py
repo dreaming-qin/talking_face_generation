@@ -14,6 +14,10 @@ from PIL import Image
 from random import sample
 from torch import nn
 import random
+import librosa
+import soundfile as sf
+import python_speech_features
+import scipy.io.wavfile as wave
 
 
 
@@ -70,12 +74,12 @@ from src.model.exp3DMM.fusion import PositionalEncoding
 # cmd = 'ffmpeg -i {} -loglevel error -y -vframes 1 {}'
 
 
+'''无损将图片序列压缩为视频'''
+# cmd='ffmpeg -i temp2/%4d.png -c:v libx265 -pix_fmt yuv420p -preset ultrafast -x265-params lossless=1 -y temp.mp4'
 
 
 if __name__=='__main__':
-    for i in range(10000):
-        result = random.randint(1,10)
-        print(result)
+    pass
 
     
 

@@ -48,12 +48,16 @@ def process_audio(video_dir):
 def process_train_audio(audio_file):
     '''将音频转为MFCC'''
     speech, samplerate = sf.read(audio_file)
+
+    # test
+    # sf.write('temp.wav',speech,samplerate)
+
     # 16kHz对应25帧的换算方式
     fps=samplerate*25/16000
     speech=speech[:,0]
     speech = np.insert(speech, 0, np.zeros(1920))
     speech = np.append(speech, np.zeros(1920))
-    mfcc = python_speech_features.mfcc(speech,samplerate,winstep=1/(fps*4))
+    mfcc = python_speech_features.mfcc(speech,samplerate,winstep=1/(fps*4),numcep=13)
 
     ind = 3
     input_mfcc = []
