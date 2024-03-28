@@ -34,7 +34,8 @@ class VideoModel(nn.Module):
             nn.ReLU(True),
             nn.Linear(128,256),
             nn.ReLU(True),
-            nn.Linear(256,256),)
+            nn.Linear(256,256),
+            nn.Linear(256,256))
         self.fusion_module=Fusion(**cfg['fusion'])
 
         self.win_size=cfg['audio_win_size']

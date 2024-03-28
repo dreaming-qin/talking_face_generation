@@ -11,11 +11,11 @@ if __name__=='__main__':
 import cv2
 import dlib
 import numpy as np
-from src.util.augmentation import AllAugmentationTransform
 import pickle
 import os
 import glob
 import imageio
+import shutil
 
 from Deep3DFaceRecon_pytorch.extract_kp_videos import keypoints
 from Deep3DFaceRecon_pytorch.face_recon_videos import get3DMM
@@ -29,13 +29,30 @@ def process_video(video_dir,dataset_name):
 
     # 获得transformer video
     filenames = sorted(glob.glob(f'{video_dir}/*.mp4'))
+    # 对视频进行判别，当不为25帧时，降采样
+    os.makedirs(f'{video_dir}/temp',exist_ok=True)
     for video_path in filenames:
+        reader = imageio.get_reader(video_path)
+        fps = round(reader.get_meta_data()['fps'])
+        reader.close()
+        if 25==fps:
+            shutil.copyfile(video_path,f'{video_dir}/temp/{os.path.basename(video_path)}')
+        else:
+            cmd=f'ffmpeg -y -i {video_path} -loglevel error -r 25 {video_dir}/temp/{os.path.basename(video_path)}'
+            os.system(cmd)
+
+    
+    temp_filenames = sorted(glob.glob(f'{video_dir}/temp/*.mp4'))
+    for save_path,video_path in zip(filenames,temp_filenames):
         info={}
         process_video,mouth_mask=__process_video__(video_path,dataset_name)
         info['face_video']=np.array(process_video,dtype=np.uint8)
         info['mouth_mask']=np.array(mouth_mask)
-        with open(video_path.replace('.mp4','_temp1.pkl'),'wb') as f:
+        with open(save_path.replace('.mp4','_temp1.pkl'),'wb') as f:
             pickle.dump(info,f)
+    
+    # 删除temp文件夹
+    shutil.rmtree(f'{video_dir}/temp')
 
     return
 
@@ -213,12 +230,6 @@ def deal_mouth_mask(mouth_mask):
                 mouth_mask[j]+=temp
     return np.around(mouth_mask).astype(np.int16)
 
-
-def get_transformed_image(driving_video, config):
-    video_array = np.array(driving_video)
-    transformations = AllAugmentationTransform(**config['augmentation_params'])
-    transformed_array = transformations(video_array)
-    return transformed_array
 
 
 def shape_to_np(shape, dtype="int"):

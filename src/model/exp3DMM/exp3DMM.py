@@ -42,7 +42,7 @@ class Exp3DMM(nn.Module):
     def forward(self, transformer_video, audio_MFCC):
         """transformer_video输入维度[b,len,3,H,W]
         audio_MFCC输入维度[B,LEN,28,mfcc dim]
-        输出维度都是[B,len,3dmm dim]
+        输出维度都是[B,len(27),3dmm dim]
         """
         # [B,len(37),3dmm dim(64)]
         audio_exp=self.audio_model(audio_MFCC)
@@ -52,9 +52,10 @@ class Exp3DMM(nn.Module):
         # [B,len(27),3dmm dim(64)]
         video_exp=self.video_model(transformer_video,audio_choose_exp_detach)
 
-        video_exp[...,self.audio_exp_list]+=audio_choose_exp_detach[:,self.win_size:-self.win_size]
+        fake_exp=video_exp.clone()
+        fake_exp[...,self.audio_exp_list]+=audio_choose_exp_detach[:,self.win_size:-self.win_size]
         
-        return audio_exp,video_exp
+        return audio_exp[:,self.win_size:-self.win_size],fake_exp
     
 # 测试代码
 if __name__=='__main__':

@@ -69,7 +69,7 @@ def eval(exp_model,render,dataloader,checkpoint=None):
         for key,value in data.items():
             data[key]=value.to(next(render.parameters()).device)
 
-        exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+        _,exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
         drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
         imgs = render(data['img'],drving_src )['fake_image']
 
@@ -96,7 +96,7 @@ def save_result(exp_model,render,dataloader,save_dir,save_video_num=1):
         for key,value in data.items():
             data[key]=value.to(next(render.parameters()).device)
         
-        exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+        _,exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
         drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
         imgs = render(data['img'],drving_src )['fake_image']
 
@@ -203,7 +203,7 @@ def run(config):
     # 其它的一些参数
     best_metrices=-1
     best_checkpoint=None
-
+    
     train_logger.info('准备完成，开始训练')
     # 开始训练
     for epoch in range(config['epoch']):
@@ -216,13 +216,12 @@ def run(config):
             # test
             # imageio.mimsave('test.mp4',data['video'][0].cpu().numpy())
 
-
-            exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+            audio_exp,exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
             drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
             imgs = render(data['img'],drving_src )['fake_image']
 
             # 计算loss
-            loss=loss_function(exp_result,imgs,data)
+            loss=loss_function(audio_exp,exp_result,imgs,data)
 
             epoch_loss+=loss.item()
             # 反向传播

@@ -79,6 +79,12 @@ from src.model.exp3DMM.fusion import PositionalEncoding
 
 
 if __name__=='__main__':
+    path='/workspace/code/talking_face_generation'
+    for file in os.listdir(path):
+        if 'data_' in file:
+            continue
+        cmd=f'cp -rf {file} /workspace/code/talking_face_generation2'
+        os.system(cmd)
     pass
 
     

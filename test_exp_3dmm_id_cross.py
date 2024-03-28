@@ -64,7 +64,8 @@ def generate_video(config):
 
     print('生成视频中...')
     # 生成exp 3dmm
-    exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+    audio_exp,exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+
     driving_src=torch.cat((exp_result,data['pose']),dim=2)
     driving_src=get_window(driving_src,config['render_win_size'])
     # (len,dim,win)
@@ -90,7 +91,6 @@ def generate_video(config):
     # 从左到右以此是（源图片，姿势视频，音频视频，生成视频）
     # test
     mask_video=data['video'].squeeze(0)[5:-5]
-    mask_video=torch.tensor(mask_video).float().to(device)
 
     img_video=data['img'].permute(0,2,3,1)
     pose_real_video=data['pose_real_video']
@@ -147,12 +147,12 @@ def get_data(config):
             mask_width=config['mask_width']
             mask_height=config['mask_height']
             top,bottom,left,right=mask
-            top=max(0,min(top,top-((mask_height-bottom+top)//2)))
-            bottom=min(img.shape[0],max(bottom,bottom+((mask_height-bottom+top)//2)))
-            left=max(0,min(left,left-((mask_width-right+left)//2)))
-            right=min(img.shape[1],max(right,right+((mask_width-right+left)//2)))
-            noise=np.random.randint(0,256,(bottom-top,right-left,3))
-            img[top:bottom,left:right]=noise
+            top_temp=max(0,min(top,top-((mask_height-bottom+top)//2)))
+            bottom_temp=min(img.shape[0],max(bottom,bottom+((mask_height-bottom+top)//2)))
+            left_temp=max(0,min(left,left-((mask_width-right+left)//2)))
+            right_temp=min(img.shape[1],max(right,right+((mask_width-right+left)//2)))
+            noise=np.random.randint(0,256,(bottom_temp-top_temp,right_temp-left_temp,3))
+            img[top_temp:bottom_temp,left_temp:right_temp]=noise
     ans['video']=torch.tensor((video/255*2)-1).float().to(device)
 
     # 输入音频
@@ -224,9 +224,9 @@ if __name__ == '__main__':
 
     # 当前的输入文件为了省事，是面向已经处理好的pkl文件
     config['audio_file']='data_mead/format_data/test/0/M003_front_angry_level_3_011.pkl'
-    # config['audio_file']='data_mead/format_data/test/0/M019_front_happy_level_1_025.pkl'
+    # config['audio_file']='data_mead/format_data/test/0/M003_front_angry_level_1_030.pkl'
     config['img_file']='data_mead/format_data/test/0/W016_front_sad_level_2_015.pkl'
-    config['pose_file']='data_mead/format_data/test/0/M019_front_happy_level_1_025.pkl'
+    config['pose_file']='data_mead/format_data/test/0/M019_front_sad_level_3_013.pkl'
 
 
     generate_video(config)

@@ -105,24 +105,18 @@ def merge_data(dir_name):
         # 获得音频的数据
         with open(video_path.replace('.mp4','_audio.pkl'),'rb') as f:
             temp = pickle.load(f)
-        info['audio_mfcc']=temp['input_audio_mfcc']
-        info['audio_hugebert']=temp['syncNet_audio']
+        info['audio_word']=temp['audio_word']
+
 
         # 对齐音频数据
-        if len(info['audio_mfcc'])<len(info['face_video']):
-            temp_last=torch.tensor(info['audio_mfcc'][-1]).expand(len(info['face_video'])-len(info['audio_mfcc']),-1,-1)
-            info['audio_mfcc']=np.concatenate((info['audio_mfcc'],temp_last.numpy()))
+        if len(info['audio_word'])>=len(info['face_video']):
+            info['audio_word']=info['audio_word'][:info['face_video']]
         else:
-            info['audio_mfcc']=info['audio_mfcc'][:len(info['face_video'])]
-        if len(info['audio_hugebert'])<2*len(info['face_video']):
-            temp_last=torch.tensor(info['audio_hugebert'][-1]).expand(2*len(info['face_video'])-len(info['audio_hugebert']),-1)
-            info['audio_hugebert']=np.concatenate((info['audio_hugebert'],temp_last.numpy()))
-        else:
-            info['audio_hugebert']=info['audio_hugebert'][:2*len(info['face_video'])]
+            temp_last=torch.tensor(info['audio_word'][-1]).expand(len(info['face_video'])-len(info['audio_word']))
+            info['audio_word']=np.concatenate((info['audio_word'],temp_last.numpy()))
         # 检验长度对齐
         assert len(info['face_coeff']['coeff'])==len(info['face_video'])
-        assert len(info['audio_hugebert'])==2*len(info['face_video'])
-        assert len(info['audio_mfcc'])==len(info['face_video'])
+        assert len(info['audio_word'])==len(info['face_video'])
 
         # 获得最终数据，使用压缩操作
         info = pickle.dumps(info)
@@ -260,9 +254,9 @@ if __name__=='__main__':
     # dir_list=dir_list[index:]
 
     # test
-    dir_list=['result/exp3DMM/result/merge']
-    for file_list in dir_list:
-        format_data(file_list)
+    # dir_list=['data_mead']
+    # for file_list in dir_list:
+    #     format_data(file_list)
     #     merge_data(file_list)
 
     

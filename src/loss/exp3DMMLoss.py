@@ -31,10 +31,7 @@ class Exp3DMMLoss(nn.Module):
 
         self.mse_loss=nn.MSELoss()
         self.L1_loss=nn.L1Loss()
-        self.logloss = nn.BCELoss()
-        self.relu=nn.ReLU()
 
-        
         self.audio_exp_list=[0,1,2,3,4,5,7,10,13]
 
 
@@ -53,32 +50,43 @@ class Exp3DMMLoss(nn.Module):
         predict={'exp':exp,'video':video,'audio_exp':audio_exp}
         loss=0
         for type in type_list:
+            # # 1.唇形图片同步
+            # real_mouth=get_face(data[f'{type}id_3dmm'].reshape(-1,80),
+            #     data[f'{type}gt_3dmm'].reshape(-1,64))[...,120:170,70:150]
+            # fake_mouth=get_face(data[f'{type}id_3dmm'].reshape(-1,80),
+            #     predict[f'{type}audio_exp'].reshape(-1,64))[...,120:170,70:150]
+            # real_mouth=real_mouth.permute(0,2,3,1)
+            # fake_mouth=fake_mouth.permute(0,2,3,1)
+            # # 转灰度图
+            # real_gray=0.299*real_mouth[...,0]+0.587*real_mouth[...,1]+0.114*real_mouth[...,2]
+            # fake_gray=0.299*fake_mouth[...,0]+0.587*fake_mouth[...,1]+0.114*fake_mouth[...,2]
+            # # 比较
+            # mouth_loss=self.mse_loss(real_gray,fake_gray)
+            # mouth_loss*=self.mouth_weight
+            # loss+=mouth_loss
+
             # 2. 9维3DMM
-            audio_choose_exp=data[f'{type}audio_exp'][...,self.audio_exp_list]
+            audio_choose_exp=predict[f'{type}audio_exp'][...,self.audio_exp_list]
             real_choose_exp=data[f'{type}gt_3dmm'][...,self.audio_exp_list]
             tdmm_mouth_loss=self.L1_loss(real_choose_exp,audio_choose_exp)
+            # tdmm_mouth_loss=self.L1_loss(data[f'{type}gt_3dmm'],predict[f'{type}audio_exp'])
             loss+=tdmm_mouth_loss
 
-            
-            # 3. GT3DMM
+            # 3. GT 3DMM
             tdmm_loss=self.L1_loss(predict[f'{type}exp'],data[f'{type}gt_3dmm'])
             tdmm_loss*=self.exp_weight
             loss+=tdmm_loss
 
-            # 2.唇形图片同步，未完成
-            real_mouth=get_face(data[f'{type}id_3dmm'].reshape(-1,80),
-                data[f'{type}gt_3dmm'].reshape(-1,64))[...,120:170,70:150]
-            fake_mouth=get_face(data[f'{type}id_3dmm'].reshape(-1,80),
-                predict[f'{type}audio_exp'].reshape(-1,64))[...,120:170,70:150]
-            real_mouth=real_mouth.permute(0,2,3,1)
-            fake_mouth=fake_mouth.permute(0,2,3,1)
-            # 转灰度图
-            real_gray=0.299*real_mouth[...,0]+0.587*real_mouth[...,1]+0.114*real_mouth[...,2]
-            fake_gray=0.299*fake_mouth[...,0]+0.587*fake_mouth[...,1]+0.114*fake_mouth[...,2]
-            # 比较
-            mouth_loss=self.L1_loss(real_gray,fake_gray)
-            mouth_loss*=self.mouth_weight
-            loss+=mouth_loss
+            # # test，存灰度图
+            # import numpy as np
+            # import imageio
+            # for j in range(27):
+            #     real_img=real_gray[j].cpu().numpy()
+            #     fake_img=fake_gray[j].cpu().numpy()
+            #     img=np.concatenate((real_img,fake_img),axis=1)
+            #     img=(img*255).astype(np.uint8)
+            #     imageio.imsave(f'temp/{j}.png',img)
+
 
     
         return loss
