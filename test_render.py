@@ -171,22 +171,9 @@ def save_video(video,data,save_file):
     save_file是保存的文件路径'''
     os.makedirs(os.path.dirname(save_file),exist_ok=True)
 
-    # 存结果为视频，需要加上音频
-    reader = imageio.get_reader(data['path'])
-    # 获得fps
-    fps = reader.get_meta_data()['fps']
-    reader.close()
     # 先把视频存好
-    torchvision.io.write_video('temp.mp4', ((video+1)/2*255).cpu(), fps=fps)
+    torchvision.io.write_video('temp.mp4', ((video+1)/2*255).cpu(), fps=25)
 
-    # 设置帧率为25
-    if fps!=25:
-        shutil.copyfile('temp.mp4','temp2.mp4')
-        cmd='ffmpeg -y -i temp2.mp4 -loglevel error -r 25 temp.mp4'
-        os.system(cmd)
-        os.remove('temp2.mp4')
-
-    
     # 将data['path']的音频嵌入temp.mp4视频中，保存在save_file中
     command ='ffmpeg -i {} -i {} -loglevel error -c copy -map 0:0 -map 1:1 -y -shortest {}'.format(
         'temp.mp4',data['path'],save_file

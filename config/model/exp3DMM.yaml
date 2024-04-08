@@ -24,7 +24,7 @@ video_encoder:
 
 
 audio_encoder:
-  num_encoder_layers: 7
+  num_encoder_layers: 8
   feature_dim: 256
   nhead: 8
   feedforward_dim: 512
@@ -40,7 +40,7 @@ exp_weight: 1
 sync_weight: 1
 # 重构权重
 rec_weight: 2
-# rec_low_weight中，第一项是L1 loss，第二项是ssim
+# render_loss用的
 rec_low_weight: [1,0]
 # 唇形同步器
 # sync_net_pre_train: "checkpoint/syncNet/epoch_18_metrices_0.6473926901817322.pth"
@@ -59,7 +59,7 @@ result_dir: "result/exp3DMM"
 epoch: 10000
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [6,16]
+lr_scheduler_step: [10,17]
 
-exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_3_metrices_0.9028128603692136.pth"
-render_pre_train: "checkpoint/render/edit_epoch_22_metrices_0.9295839777333871.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_0_metrices_0.8893113131967761.pth"
+render_pre_train: "checkpoint/render/edit_epoch_23_metrices_0.9345089584052061.pth"

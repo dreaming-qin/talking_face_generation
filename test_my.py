@@ -17,7 +17,9 @@ import random
 import librosa
 import soundfile as sf
 import python_speech_features
+from torch.multiprocessing import Pool, set_start_method
 import scipy.io.wavfile as wave
+from moviepy.editor import AudioFileClip
 
 
 
@@ -37,6 +39,7 @@ from src.util.model_util import cnt_params
 from src.model.exp3DMM.self_attention_pooling import SelfAttentionPooling
 from src.model.exp3DMM.fusion import PositionalEncoding
 
+from src.util.data_process.audio_config_pc_avs import AudioConfig
 
 
 
@@ -78,16 +81,77 @@ from src.model.exp3DMM.fusion import PositionalEncoding
 # cmd='ffmpeg -i temp2/%4d.png -c:v libx265 -pix_fmt yuv420p -preset ultrafast -x265-params lossless=1 -y temp.mp4'
 
 
-if __name__=='__main__':
-    path='/workspace/code/talking_face_generation'
-    for file in os.listdir(path):
-        if 'data_' in file:
-            continue
-        cmd=f'cp -rf {file} /workspace/code/talking_face_generation2'
-        os.system(cmd)
-    pass
+audio_process=AudioConfig(num_frames_per_clip=5,hop_size=160)
+
+def format_data(file):
+    with open(file,'rb') as f:
+        byte_file=f.read()
+    byte_file=zlib.decompress(byte_file)
+    data= pickle.loads(byte_file)
+    video_file=data['path']
+    
+    # fps指定帧数，保证音频片段和视频片段同步
+    audio_file=video_file.replace('.mp4','.wav')
+    my_audio_clip = AudioFileClip(video_file)
+    my_audio_clip.write_audiofile(audio_file,fps=16000)
 
     
+    '''将音频转为MFCC'''
+    speech, samplerate = sf.read(audio_file)
+    # 16kHz对应25帧的换算方式
+    fps=samplerate*25/16000
+    if len(speech.shape)==2:
+        speech=speech[:,0]
+    speech = np.insert(speech, 0, np.zeros(1920))
+    speech = np.append(speech, np.zeros(1920))
+    mfcc = python_speech_features.mfcc(speech,samplerate,winstep=1/(fps*4))
+
+    ind = 3
+    input_mfcc = []
+    while ind <= int(mfcc.shape[0]/4) - 4:
+        t_mfcc =mfcc[( ind - 3)*4: (ind + 4)*4]
+        input_mfcc.append(t_mfcc)
+        ind += 1
+    input_mfcc=np.array(input_mfcc)
+
+    
+    print('进程{}处理{}，裁剪了{}'.format(os.getpid(),file,len(data['face_video'])-len(input_mfcc)))
+    if len(input_mfcc)>=len(data['face_video']):
+        input_mfcc=input_mfcc[:len(data['face_video'])]
+    else:
+        temp_last=torch.tensor(input_mfcc[-1]).expand(len(data['face_video'])-len(input_mfcc),-1,-1)
+        input_mfcc=np.concatenate((input_mfcc,temp_last.numpy()))
+
+    assert len(data['face_video'])==len(input_mfcc)
+
+    data['audio_mfcc']=np.array(input_mfcc)
+    # 存入新文件
+    new_file=file.replace('data_mead2','data_mead3')
+    os.makedirs(os.path.dirname(new_file),exist_ok=True)
+    data = pickle.dumps(data)
+    data=zlib.compress(data)
+    with open(new_file,'wb') as f:
+        f.write(data)
+    
+    # 删除音频文件
+    os.remove(audio_file)
+
+
+'''往data中加入path'''
+if __name__=='__main__':
+    set_start_method('spawn')
+    # 重新处理音频，生成data_vox2
+    file_list=sorted(glob.glob('data_mead2/format_data/*/*/*.pkl'))
+
+    for temp in tqdm(file_list):
+        format_data(temp)
+
+    workers=4
+    pool = Pool(workers)
+    for _ in pool.imap_unordered(format_data,file_list):
+        None
+    pool.close()
+
 
 
 

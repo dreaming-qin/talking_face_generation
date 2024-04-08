@@ -74,7 +74,7 @@ def generate_video(config):
         # imageio.mimsave('test.mp4',data['video'][0].cpu().numpy())
 
         # 生成exp 3dmm
-        _,exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+        exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
         driving_src=torch.cat((exp_result,data['pose']),dim=2)
         driving_src=get_window(driving_src,config['render_win_size'])
         # (len,dim,win)
@@ -131,18 +131,18 @@ def to_device(data,device,config):
     
     # 获得输入video
     video=data['face_video']
-    mask_list=data['mouth_mask']
-    for img,mask in zip(video,mask_list):
-        if mask[1]-mask[0]>0 and mask[3]-mask[2]>0:
-            mask_width=config['mask_width']
-            mask_height=config['mask_height']
-            top,bottom,left,right=mask
-            top_temp=max(0,min(top,top-((mask_height-bottom+top)//2)))
-            bottom_temp=min(img.shape[0],max(bottom,bottom+((mask_height-bottom+top)//2)))
-            left_temp=max(0,min(left,left-((mask_width-right+left)//2)))
-            right_temp=min(img.shape[1],max(right,right+((mask_width-right+left)//2)))
-            noise=np.random.randint(0,256,(bottom_temp-top_temp,right_temp-left_temp,3))
-            img[top_temp:bottom_temp,left_temp:right_temp]=noise
+    # mask_list=data['mouth_mask']
+    # for img,mask in zip(video,mask_list):
+    #     if mask[1]-mask[0]>0 and mask[3]-mask[2]>0:
+    #         mask_width=config['mask_width']
+    #         mask_height=config['mask_height']
+    #         top,bottom,left,right=mask
+    #         top_temp=max(0,min(top,top-((mask_height-bottom+top)//2)))
+    #         bottom_temp=min(img.shape[0],max(bottom,bottom+((mask_height-bottom+top)//2)))
+    #         left_temp=max(0,min(left,left-((mask_width-right+left)//2)))
+    #         right_temp=min(img.shape[1],max(right,right+((mask_width-right+left)//2)))
+    #         noise=np.random.randint(0,256,(bottom_temp-top_temp,right_temp-left_temp,3))
+    #         img[top_temp:bottom_temp,left_temp:right_temp]=noise
     ans['video']=torch.tensor((video/255*2)-1).to(device).float()
 
     # 因为video窗口问题，需要扩展

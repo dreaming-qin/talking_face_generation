@@ -13,19 +13,12 @@ class AudioEncoder(nn.Module):
 
 
         self.mapping_net=nn.Sequential(
-            nn.Linear(13,64),
+            nn.Linear(12,64),
             nn.Linear(64,128),
             nn.ReLU(True),
             nn.Linear(128,256),
-            nn.ReLU(True),
-            nn.Linear(256,256),
         )
-        
-        # self.mapping_net=nn.Sequential(
-        #     nn.Linear(80,128),
-        #     nn.Linear(128,256),
-        #     nn.Linear(256,256),
-        # )
+
         
         encoder_layer = nn.TransformerEncoderLayer(d_model=feature_dim, nhead=nhead,
                         dim_feedforward=feedforward_dim,batch_first=True)
@@ -40,7 +33,7 @@ class AudioEncoder(nn.Module):
 
 
     def forward(self,audio):
-        '''audio输入维度[B,len,28,mfcc dim(13)]
+        '''audio输入维度[B,len,28,mfcc dim]
         输出维度[B,len,256]'''
 
         out=self.mapping_net(audio)

@@ -64,13 +64,6 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
     def __init__(self,config,type='train',frame_num=1):
         format_path=config['format_output_path']
         self.filenames=sorted(glob.glob(f'{format_path}/{type}/*/*.pkl'))
-        self.emo_dict={}
-        for file in self.filenames:
-            name=os.path.basename(file)
-            emo=name[:name.rfind('_')]
-            if not emo in self.emo_dict:
-                self.emo_dict[emo]=[]
-            self.emo_dict[emo].append(file)
         self.frame_num=frame_num
         self.audio_win_size=config['audio_win_size']
         self.exp_3dmm_win_size=config['render_win_size']
@@ -115,10 +108,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
 
         audio_data=self.process_audio(data)
         # (frame,win,28,dim)
-        out[f'{type}audio']=torch.tensor(audio_data[0]).float()
-        out[f'{type}hubert']=torch.tensor(audio_data[1]).float()
-        # 唇形监督器label
-        out[f'{type}label'] = torch.ones(len(audio_data[1]))
+        out[f'{type}audio']=torch.tensor(audio_data).float()
 
         # 获得输入视频
         mask_video=self.process_mask_video(data)
@@ -126,26 +116,28 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         return out
 
     def process_mask_video(self,data):
-        frame_index_list=copy.deepcopy(data['frame_index'])
+        frame_index_list=random.sample(range(len(data['face_video'])),self.frame_num)
+        frame_index_list=[[i] for i in frame_index_list]
         for temp in frame_index_list:
             for _ in range(self.audio_win_size+self.exp_3dmm_win_size):
-                temp.append(min(temp[-1]+1,len(data['face_video'])-1))
-                temp.insert(0,max(temp[0]-1,0))
+                # temp.append(min(temp[-1]+1,len(data['face_video'])-1))
+                # temp.insert(0,max(temp[0]-1,0))
+                temp+=[temp[-1],temp[-1]]
 
         mask_video=[]
         for index_list in frame_index_list:
             temp=[]
             for index in index_list:
                 img=data['face_video'][index].copy()
-                mask=data['mouth_mask'][index]
-                if mask[1]-mask[0]>0 and mask[3]-mask[2]>0:
-                    top,bottom,left,right=mask
-                    top_temp=max(0,min(top,top-((self.mask_height-bottom+top)//2)))
-                    bottom_temp=min(img.shape[0],max(bottom,bottom+((self.mask_height-bottom+top)//2)))
-                    left_temp=max(0,min(left,left-((self.mask_width-right+left)//2)))
-                    right_temp=min(img.shape[1],max(right,right+((self.mask_width-right+left)//2)))
-                    noise=np.random.randint(0,256,(bottom_temp-top_temp,right_temp-left_temp,3))
-                    img[top_temp:bottom_temp,left_temp:right_temp]=noise
+                # mask=data['mouth_mask'][index]
+                # if mask[1]-mask[0]>0 and mask[3]-mask[2]>0:
+                #     top,bottom,left,right=mask
+                #     top_temp=max(0,min(top,top-((self.mask_height-bottom+top)//2)))
+                #     bottom_temp=min(img.shape[0],max(bottom,bottom+((self.mask_height-bottom+top)//2)))
+                #     left_temp=max(0,min(left,left-((self.mask_width-right+left)//2)))
+                #     right_temp=min(img.shape[1],max(right,right+((self.mask_width-right+left)//2)))
+                #     noise=np.random.randint(0,256,(bottom_temp-top_temp,right_temp-left_temp,3))
+                #     img[top_temp:bottom_temp,left_temp:right_temp]=noise
                 temp.append(img)
                 # # test
                 # imageio.imsave('temp1.jpg',data['face_video'][index])
@@ -182,28 +174,20 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
                 temp.append(temp[-1]+1)
                 temp.insert(0,max(temp[0]-1,0))
         input_audio_data=data['audio_mfcc']
-        input_audio_hubert=data['audio_hugebert']
         audio_input=[]
-        audio_hubert=[]
 
         # 获取有效数据
         for temp in frame_index_list:
             input=[]
-            hubert=[]
             for frame_index in temp:
                 # 对于音频，越界的情况只有在末尾发生，因此直接取最后一个
                 if frame_index>=len(input_audio_data):
                     input.append(input_audio_data[-1])
                 else:
                     input.append(input_audio_data[frame_index])
-                if (2*frame_index+1)>=len(input_audio_hubert):
-                    hubert.append(input_audio_hubert[-2:])
-                else:
-                    hubert.append(input_audio_hubert[2*frame_index:2*(frame_index+1)])
-            audio_hubert.append(hubert)
             audio_input.append(input)
 
-        return np.array(audio_input),np.array(audio_hubert)
+        return np.array(audio_input)
 
     def process_3DMM(self,data):
         frame_index_list=copy.deepcopy(data['frame_index'])
@@ -251,8 +235,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
     def collater(self, samples):
         # 对齐数据
         triple_list=['']
-        data_key=['gt_video','img','gt_3dmm','id_3dmm','audio','video','pose',
-                  'hubert','label']
+        data_key=['gt_video','img','gt_3dmm','id_3dmm','audio','video','pose']
         data={}
         for key in data_key:
             for triple in triple_list:
@@ -283,7 +266,5 @@ if __name__=='__main__':
         collate_fn=dataset.collater
     )     
     for data in dataloader:
-        exp=data['gt_3dmm'][0,0].cpu().numpy()
-        id=data['id_3dmm'][0,0].cpu().numpy()
-        dmm=np.concatenate((exp,id))
-        np.save('3dmm',dmm)
+        for key,val in data.items():
+            print(f'{key}的形状是{val.shape}')

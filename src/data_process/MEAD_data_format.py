@@ -97,22 +97,30 @@ def merge_data(dir_name):
             temp = pickle.load(f)
         info.update(temp)
 
-        # 没有视频信息的，直接弃用
-        frame=info['face_video'][0]
-        if np.sum(frame==0)>3*256*256/4:
-            continue
-
         # 获得音频的数据
         with open(video_path.replace('.mp4','_audio.pkl'),'rb') as f:
             temp = pickle.load(f)
         info['audio_word']=temp['audio_word']
 
+        # 完了之后，删除pkl文件
+        os.remove(video_path.replace('.mp4','_video.pkl'))
+        os.remove(video_path.replace('.mp4','_audio.pkl'))
+        
+        # 没有视频信息的，直接弃用
+        frame=info['face_video'][0]
+        if np.sum(frame==0)>3*256*256/4:
+            continue
+
+        # 没有音频信息的，直接弃用
+        word=info['audio_word']
+        if len(word)==0:
+            continue
 
         # 对齐音频数据
         if len(info['audio_word'])>=len(info['face_video']):
-            info['audio_word']=info['audio_word'][:info['face_video']]
+            info['audio_word']=info['audio_word'][:len(info['face_video'])]
         else:
-            temp_last=torch.tensor(info['audio_word'][-1]).expand(len(info['face_video'])-len(info['audio_word']))
+            temp_last=torch.tensor(31).expand(len(info['face_video'])-len(info['audio_word']))
             info['audio_word']=np.concatenate((info['audio_word'],temp_last.numpy()))
         # 检验长度对齐
         assert len(info['face_coeff']['coeff'])==len(info['face_video'])
@@ -124,10 +132,6 @@ def merge_data(dir_name):
         with open(video_path.replace('.mp4','.pkl'),'wb') as f:
             f.write(info)
     
-        # 完了之后，删除没有必要的数据
-        os.remove(video_path.replace('.mp4','_video.pkl'))
-        os.remove(video_path.replace('.mp4','_audio.pkl'))
-        
         # test，测试遮罩效果
         # import imageio
         # mouth_mask=info['mouth_mask']
@@ -246,17 +250,17 @@ if __name__=='__main__':
 
     dir_list=sorted(glob.glob(f'{dataset_root}/*/video/front/*/*'))
 
-    # index=0
-    # for i,dir in enumerate(dir_list):
-    #     if '/workspace/dataset/MEAD/W026/video/front/happy/level_2' in dir:
-    #         index=i
-    #         break
-    # dir_list=dir_list[index:]
+    index=0
+    for i,dir in enumerate(dir_list):
+        if '/workspace/dataset/MEAD/M012/video/front/happy/level_1' in dir:
+            index=i
+            break
+    dir_list=dir_list[index:]
 
-    # test
+    # # test
     # dir_list=['data_mead']
     # for file_list in dir_list:
-    #     format_data(file_list)
+    #     # format_data(file_list)
     #     merge_data(file_list)
 
     
@@ -272,6 +276,6 @@ if __name__=='__main__':
     #     None
     # pool.close()
 
-    # move_data(config)
+    move_data(config)
 
 

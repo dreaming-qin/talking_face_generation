@@ -69,7 +69,7 @@ def eval(exp_model,render,dataloader,checkpoint=None):
         for key,value in data.items():
             data[key]=value.to(next(render.parameters()).device)
 
-        _,exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+        exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
         drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
         imgs = render(data['img'],drving_src )['fake_image']
 
@@ -96,12 +96,12 @@ def save_result(exp_model,render,dataloader,save_dir,save_video_num=1):
         for key,value in data.items():
             data[key]=value.to(next(render.parameters()).device)
         
-        _,exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+        exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
         drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
         imgs = render(data['img'],drving_src )['fake_image']
-
     
-        # 输出为视频，顺序是（目标，源图片，生成图片）
+        # 输出为视频，顺序是（输入视频，源图片，目标，生成图片）
+        input_video=data[f'video'][:,18]
         real_video= data['gt_video']
         # [len,H,W,3]
         real_video=real_video.reshape(-1,3,256,256).permute(0,2,3,1)
@@ -111,7 +111,7 @@ def save_result(exp_model,render,dataloader,save_dir,save_video_num=1):
         fake=imgs
         fake=fake.reshape(-1,3,256,256).permute(0,2,3,1)
         # [len,H,3*W,3]
-        video=torch.cat((real_video,src_imgs,fake),dim=2)
+        video=torch.cat((input_video,src_imgs,real_video,fake),dim=2)
         save_path=os.path.join(save_dir,'{}.mp4'.format(it))
         torchvision.io.write_video(save_path, ((video+1)/2*255).cpu(), fps=1)
     exp_model.train()
@@ -138,10 +138,10 @@ def run(config):
     train_dataset=Exp3DMMdataset(config,type='train',frame_num=1)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=4, 
+        batch_size=6, 
         shuffle=True,
         drop_last=False,
-        num_workers=2,
+        num_workers=3,
         collate_fn=train_dataset.collater
     )
     # 验证集
@@ -216,12 +216,12 @@ def run(config):
             # test
             # imageio.mimsave('test.mp4',data['video'][0].cpu().numpy())
 
-            audio_exp,exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+            exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
             drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
             imgs = render(data['img'],drving_src )['fake_image']
 
             # 计算loss
-            loss=loss_function(audio_exp,exp_result,imgs,data)
+            loss=loss_function(exp_result,imgs,data)
 
             epoch_loss+=loss.item()
             # 反向传播

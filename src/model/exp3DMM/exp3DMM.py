@@ -13,8 +13,10 @@ if __name__=='__main__':
 
 
 
-from src.model.exp3DMM.audio_model import AudioModel
-from src.model.exp3DMM.video_model import VideoModel
+from src.model.exp3DMM.audio_encoder import AudioEncoder
+from src.model.exp3DMM.video_encoder import VideoEncoder
+from src.model.exp3DMM.fusion import Fusion
+from src.util.util import get_window
 from src.util.model_util import cnt_params
 
 
@@ -24,38 +26,73 @@ class Exp3DMM(nn.Module):
     '''
     def __init__(self,cfg) :
         super().__init__()
+        self.audio_encoder=AudioEncoder(**cfg['audio_encoder'])
+        self.video_encoder=VideoEncoder(**cfg['video_encoder'])
+        self.fusion_module=Fusion(**cfg['fusion'])
 
-        self.audio_model=AudioModel(cfg)
-        self.audio_exp_list=[0,1,2,3,4,5,7,10,13]
-        cfg['audio_exp_len']=len(self.audio_exp_list)
-        self.video_model=VideoModel(cfg)
+        audio_cnt,_=cnt_params(self.audio_encoder)
+        print(f"audio_encoder total paras number: {audio_cnt}")
+        video_cnt,_=cnt_params(self.video_encoder)
+        print(f"video_encoder total paras number: {video_cnt}")
+        fusion_cnt,_=cnt_params(self.fusion_module)
+        print(f"fusion_module total paras number: {fusion_cnt}")
         
         self.win_size=cfg['audio_win_size']
 
-
-        audio_cnt,_=cnt_params(self.audio_model)
-        print(f"audio_model total paras number: {audio_cnt}")
-        video_cnt,_=cnt_params(self.video_model)
-        print(f"video_model total paras number: {video_cnt}")
-        
-
     def forward(self, transformer_video, audio_MFCC):
-        """transformer_video输入维度[b,len,3,H,W]
-        audio_MFCC输入维度[B,LEN,28,mfcc dim]
-        输出维度都是[B,len(27),3dmm dim]
+        """transformer_video输入维度[b,len(37),3,H,W]
+        audio_MFCC输入维度[B,LEN(37),20,mel dim(80)]
+        输出维度[B,len,3dmm dim]
         """
-        # [B,len(37),3dmm dim(64)]
-        audio_exp=self.audio_model(audio_MFCC)
-        # 抽出影响最大的n维
-        audio_choose_exp_detach=audio_exp[...,self.audio_exp_list].detach()
+        # [B,len,audio dim]
+        audio_feature=self.audio_encoder(audio_MFCC)
+        B,L,C,H,W=transformer_video.shape
+        transformer_video=transformer_video.reshape(-1,C,H,W)
+        video_feature=self.video_encoder(transformer_video)
 
-        # [B,len(27),3dmm dim(64)]
-        video_exp=self.video_model(transformer_video,audio_choose_exp_detach)
+        # # test，测试audio feature与video feature大小
+        # import imageio
+        # import numpy as np
+        # # 1.获得原来的audio feature
+        # state_dict=torch.load('checkpoint/exp3DMM/epoch_17_metrices_0.9269133167494708.pth',
+        #             map_location=torch.device('cpu'))
+        # temp_dice={}
+        # for key,value in state_dict.items():
+        #     temp_dice[key[7:]]=value
+        # self.load_state_dict(temp_dice)
+        # o_audio_feature=self.audio_encoder(audio_MFCC).squeeze()
+        # # 2. 获得新的audio feture
+        # state_dict=torch.load('checkpoint/exp3DMM/epoch_18_metrices_0.6989557775132689.pth',
+        #             map_location=torch.device('cpu'))
+        # temp_dice={}
+        # for key,value in state_dict.items():
+        #     temp_dice[key[7:]]=value
+        # self.load_state_dict(temp_dice)
+        # n_audio_feature=self.audio_encoder(audio_MFCC).squeeze()
+        # # 3. 合并音频特征
+        # feature=torch.cat((o_audio_feature,n_audio_feature))
+        # # feature=torch.cat((audio_feature.squeeze(),video_feature))
+        # feature=feature.cpu().numpy()
+        # min_,max_=feature.min(),feature.max()
+        # feature=(255*(feature-min_)/(max_-min_)).astype(np.uint8)
+        # imageio.imsave('temp_oa2na.png',feature)
 
-        fake_exp=video_exp.clone()
-        fake_exp[...,self.audio_exp_list]+=audio_choose_exp_detach[:,self.win_size:-self.win_size]
-        
-        return audio_exp[:,self.win_size:-self.win_size],fake_exp
+
+        # [B,Len,video dim]
+        video_feature=video_feature.reshape(B,L,-1)
+        # [B,len,win_size,audio dim]
+        audio_feature=get_window(audio_feature,self.win_size)
+        audio_feature=audio_feature[:,self.win_size:-self.win_size]
+        # [B,len,win_size,video dim]
+        video_feature=get_window(video_feature,self.win_size)
+        video_feature=video_feature[:,self.win_size:-self.win_size]
+
+
+        # test，测试音频是否能同步唇形
+        # exp3DMM=self.fusion_module(audio_feature,audio_feature)
+
+        exp3DMM=self.fusion_module(audio_feature,video_feature)
+        return exp3DMM
     
 # 测试代码
 if __name__=='__main__':
@@ -82,9 +119,6 @@ if __name__=='__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model=Exp3DMM(config)
     model= torch.nn.DataParallel(model, device_ids=config['device_id'])
-    state_dict=torch.load('checkpoint/exp3DMM/epoch_18_metrices_0.6989557775132689.pth',
-                map_location=torch.device('cpu'))
-    model.load_state_dict(state_dict,strict=False)
     with torch.no_grad():
         for data in dataloader:
             for key,value in data.items():

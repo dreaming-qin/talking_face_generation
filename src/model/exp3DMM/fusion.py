@@ -21,11 +21,16 @@ class Fusion(nn.Module):
         normalize_before=False,
         return_intermediate_dec=False,
         pos_embed_len=80,
+        upper_face3d_indices=tuple(list(range(19)) + list(range(46, 51))),
+        lower_face3d_indices=tuple(range(19, 46)),
         dynamic_K=None,
         dynamic_ratio=None,
         **_
     ) -> None:
         super().__init__()
+
+        self.upper_face3d_indices = upper_face3d_indices
+        self.lower_face3d_indices = lower_face3d_indices
 
         self.upper_decoder = get_decoder_network(
             d_model,
@@ -41,6 +46,20 @@ class Fusion(nn.Module):
         )
         reset_parameters(self.upper_decoder)
 
+        self.lower_decoder = get_decoder_network(
+            d_model,
+            nhead,
+            dim_feedforward,
+            dropout,
+            activation,
+            normalize_before,
+            num_decoder_layers,
+            return_intermediate_dec,
+            dynamic_K,
+            dynamic_ratio,
+        )
+        reset_parameters(self.lower_decoder)
+
         self.pos_embed = PositionalEncoding(d_model, pos_embed_len)
 
         tail_hidden_dim = d_model // 2
@@ -49,9 +68,15 @@ class Fusion(nn.Module):
             nn.ReLU(),
             nn.Linear(tail_hidden_dim, tail_hidden_dim),
             nn.ReLU(),
-            nn.Linear(tail_hidden_dim, 64),
+            nn.Linear(tail_hidden_dim, len(upper_face3d_indices)),
         )
-
+        self.lower_tail_fc = nn.Sequential(
+            nn.Linear(d_model, tail_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(tail_hidden_dim, tail_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(tail_hidden_dim, len(lower_face3d_indices)),
+        )
 
 
     def forward(self, content, style_code):
@@ -81,7 +106,14 @@ class Fusion(nn.Module):
         upper_face3d = self.upper_tail_fc(upper_face3d_feat)
         # (B, N, C_exp)
 
-        return upper_face3d
+        lower_face3d_feat = self.lower_decoder(tgt, content, pos=pos_embed, query_pos=style)[0]
+        lower_face3d_feat = lower_face3d_feat.permute(1, 0, 2).reshape(B, N, W, C)[:, :, W // 2, :]
+        lower_face3d = self.lower_tail_fc(lower_face3d_feat)
+        C_exp = len(self.upper_face3d_indices) + len(self.lower_face3d_indices)
+        face3d = torch.zeros(B, N, C_exp).to(upper_face3d)
+        face3d[:, :, self.upper_face3d_indices] = upper_face3d
+        face3d[:, :, self.lower_face3d_indices] = lower_face3d
+        return face3d
 
 class PositionalEncoding(nn.Module):
     def __init__(self, d_hid, n_position=200):
