@@ -56,7 +56,7 @@ def process_train_audio(audio_file):
     ind = 3
     input_mfcc = []
     while ind <= int(mfcc.shape[0]/4) - 4:
-        t_mfcc =mfcc[( ind - 3)*4: (ind + 4)*4, 1:]
+        t_mfcc =mfcc[( ind - 3)*4: (ind + 4)*4]
         input_mfcc.append(t_mfcc)
         ind += 1
     return np.array(input_mfcc)
