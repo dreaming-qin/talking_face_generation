@@ -120,9 +120,9 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         frame_index_list=[[i] for i in frame_index_list]
         for temp in frame_index_list:
             for _ in range(self.audio_win_size+self.exp_3dmm_win_size):
-                # temp.append(min(temp[-1]+1,len(data['face_video'])-1))
-                # temp.insert(0,max(temp[0]-1,0))
-                temp+=[temp[-1],temp[-1]]
+                temp.append(min(temp[-1]+1,len(data['face_video'])-1))
+                temp.insert(0,max(temp[0]-1,0))
+                # temp+=[temp[-1],temp[-1]]
 
         mask_video=[]
         for index_list in frame_index_list:

@@ -124,10 +124,10 @@ class Exp3DMMLoss(nn.Module):
             #     sync_loss*=self.sync_weight
             #     loss+=sync_loss
 
-            # 重建loss
-            rec_loss=self.rec_weight*self.render_loss.api_forward_for_exp_3dmm(
-                predict[f'{type}video'],data[f'{type}gt_video'])
-            loss+=rec_loss
+            # # 重建loss
+            # rec_loss=self.rec_weight*self.render_loss.api_forward_for_exp_3dmm(
+            #     predict[f'{type}video'],data[f'{type}gt_video'])
+            # loss+=rec_loss
     
         return loss
     

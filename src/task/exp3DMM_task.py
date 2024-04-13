@@ -138,7 +138,7 @@ def run(config):
     train_dataset=Exp3DMMdataset(config,type='train',frame_num=1)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=6, 
+        batch_size=5, 
         shuffle=True,
         drop_last=False,
         num_workers=3,

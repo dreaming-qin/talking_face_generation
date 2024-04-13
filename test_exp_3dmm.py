@@ -169,6 +169,11 @@ def to_device(data,device,config):
     ans['path']=data['path']
     ans['real_video']=ans['real_video'].squeeze(0)
 
+    # test，拿出表情3DMM
+    data_3DMM=data['face_coeff']['coeff']
+    face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
+    ans['face3d_exp']=face3d_exp
+
     return ans
 
 
@@ -186,7 +191,7 @@ if __name__ == '__main__':
     # 由于GPU限制，得10张10张的往GPU送
     config['frame_num']=10
     # 设置生成的视频数量最大值
-    config['video_num']=100
+    config['video_num']=500
 
 
     generate_video(config)

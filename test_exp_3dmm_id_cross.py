@@ -64,7 +64,7 @@ def generate_video(config):
 
     print('生成视频中...')
     # 生成exp 3dmm
-    audio_exp,exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
+    exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
 
     driving_src=torch.cat((exp_result,data['pose']),dim=2)
     driving_src=get_window(driving_src,config['render_win_size'])
@@ -222,11 +222,20 @@ if __name__ == '__main__':
     # 设置生成的视频数量最大值
     config['video_num']=100
 
+
+    # id_W016_front_sad_level_2_015_pose_M019_front_happy_level_1_025_audio_M003_front_angry_level_3_011
+    # id_M003_front_angry_level_1_030_pose_M019_front_sad_level_3_013_audio_M003_front_angry_level_3_011
+    # id_M003_front_angry_level_1_030_pose_M003_front_angry_level_3_011_audio_M003_front_angry_level_3_011
     # 当前的输入文件为了省事，是面向已经处理好的pkl文件
-    config['audio_file']='data_mead/format_data/test/0/M003_front_angry_level_3_011.pkl'
-    # config['audio_file']='data_mead/format_data/test/0/M003_front_angry_level_1_030.pkl'
-    config['img_file']='data_mead/format_data/test/0/W016_front_sad_level_2_015.pkl'
-    config['pose_file']='data_mead/format_data/test/0/M019_front_sad_level_3_013.pkl'
+    config['audio_file']='data_mead/format_data/train/0/M019_front_sad_level_3_013.pkl'
+    config['img_file']='data_mead/format_data/train/26/M003_front_angry_level_3_011.pkl'
+    config['pose_file']='data_mead/format_data/train/0/M019_front_sad_level_3_013.pkl'
+
+
+    # config['audio_file']='data_mead/format_data/test/0/M003_front_disgusted_level_1_009.pkl'
+    # config['img_file']='data_mead/format_data/test/0/M005_front_neutral_level_1_001.pkl'
+    # config['pose_file']='data_mead/format_data/test/0/M009_front_angry_level_2_022.pkl'
+
 
 
     generate_video(config)

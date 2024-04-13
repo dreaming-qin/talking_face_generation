@@ -1,5 +1,9 @@
 import torch
 import numpy as np
+import imageio
+import shutil
+from moviepy.editor import VideoFileClip, AudioFileClip
+
 
 # test 
 if __name__=='__main__':
@@ -75,42 +79,64 @@ def get_face(id_3dmm,exp_3dmm):
     
     return pred_face
 
+
+def save_face_video(id_3dmm,exp_3dmm,save_file,audio_file=None):
+    '''通过3dmm的身份和表情参数，渲染人脸并保存
+    参数：
+        id_3dmm：(B，80)，tensor
+        exp_3dmm：(B, 64)，tensor
+    '''
+    face=get_face(id_3dmm,exp_3dmm)
+    face=(face*255).permute(0,2,3,1).detach().cpu().numpy().astype(np.uint8)
+    imageio.mimsave('dhaj.mp4',face,fps=25)
+    if audio_file is None:
+        shutil.copy('dhaj.mp4',save_file)
+    else:
+        # 读取视频和音频文件
+        video_clip = VideoFileClip("dhaj.mp4")
+        audio_clip = AudioFileClip(audio_file)
+        # 将音频与视频合成为新的视频
+        video_with_audio = video_clip.set_audio(audio_clip)
+        # 保存新的视频文件
+        video_with_audio.write_videofile(save_file, codec="libx264", fps=25)
+    os.remove('dhaj.mp4')
+
+
 if __name__=='__main__':
     import zlib,pickle
     from PIL import Image
     import glob
 
-    device=torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device=torch.device('cuda:1')
 
-    file_list=sorted(glob.glob('data_mead/format_data/test/0/*.pkl'))
-    for file in file_list:
-        with open(file,'rb') as f:
-            byte_file=f.read()
-        byte_file=zlib.decompress(byte_file)
-        data= pickle.loads(byte_file)
-        data_3DMM=data['face_coeff']['coeff']
-        face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
-        face3d_exp=torch.tensor(face3d_exp).to(device)
+    file='data_mead/format_data/test/0/M005_front_surprised_level_3_003.pkl'
+    file='data_mead/format_data/test/0/M003_front_angry_level_3_025.pkl'
+    with open(file,'rb') as f:
+        byte_file=f.read()
+    byte_file=zlib.decompress(byte_file)
+    data= pickle.loads(byte_file)
+    data_3DMM=data['face_coeff']['coeff']
+    face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
+    face3d_exp=torch.tensor(face3d_exp).to(device)
+
+    for i in range(64):
+        os.makedirs('temp/one',exist_ok=True)
+        face3d_exp=torch.zeros_like(face3d_exp)
+        face3d_exp[...,i]=1
         face3d_id=data_3DMM[:, 0:80]
         face3d_id=torch.tensor(face3d_id).to(device)
-        face=get_face(face3d_id,face3d_exp)
+        save_face_video(face3d_id,face3d_exp,f'temp/one/{i}.mp4',data['path'])
 
-        pic=face[0].cpu().numpy().transpose(1,2,0)
-        pic=(pic*255).astype(np.uint8)
-        image_pil = Image.fromarray(pic)
+        os.makedirs('temp/zero',exist_ok=True)
+        face3d_exp=torch.zeros_like(face3d_exp)
+        face3d_exp[...,i]=0
+        face3d_id=data_3DMM[:, 0:80]
+        face3d_id=torch.tensor(face3d_id).to(device)
+        save_face_video(face3d_id,face3d_exp,f'temp/zero/{i}.mp4',data['path'])
 
-        # test
-        gray=0.299*image_pil[...,0]+0.587*image_pil[...,1]+0.114*image_pil[...,2]
-        gray=gray.astype(np.uint8)
-        image_pil = Image.fromarray(gray)
-
-        # image_pil=image_pil.convert('L')
-        image_pil.save('temp.png')
-
-        face2=get_face(face3d_id,face3d_exp)
-
-        pic=face2[0].cpu().numpy().transpose(1,2,0)
-        image_pil = Image.fromarray((pic*255).astype(np.uint8))
-        image_pil=image_pil.convert('L')
-        image_pil.save('temp2.png')
-
+        os.makedirs('temp/fu_one',exist_ok=True)
+        face3d_exp=torch.zeros_like(face3d_exp)
+        face3d_exp[...,i]=-1
+        face3d_id=data_3DMM[:, 0:80]
+        face3d_id=torch.tensor(face3d_id).to(device)
+        save_face_video(face3d_id,face3d_exp,f'temp/fu_one/{i}.mp4',data['path'])

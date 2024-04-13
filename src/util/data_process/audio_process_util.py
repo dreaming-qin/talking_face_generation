@@ -9,8 +9,6 @@ import soundfile as sf
 import pickle
 import os
 
-wav2vec2_processor = Wav2Vec2Processor.from_pretrained("./checkpoint/hubert")
-hubert_model = HubertModel.from_pretrained("./checkpoint/hubert")
 
 
 def process_audio(video_dir):
