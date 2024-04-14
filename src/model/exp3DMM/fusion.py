@@ -60,7 +60,7 @@ class Fusion(nn.Module):
         )
         reset_parameters(self.lower_decoder)
 
-        self.pos_embed = PositionalEncoding(d_model, pos_embed_len)
+        self.pos_emb = PositionalEncoding(d_model, pos_embed_len)
 
         tail_hidden_dim = d_model // 2
         self.upper_tail_fc = nn.Sequential(
@@ -82,20 +82,23 @@ class Fusion(nn.Module):
     def forward(self, content, style_code):
         """
         Args:
-            content : (B, len, window, audio dim)
-            style_code : (B, len, window, video dim)
-            其中window设置为11
+            content : (B, len(27), window(28), audio dim)
+            style_code : (B, len(27), video dim)
         Returns:
             face3d: (B, len, 3dmm dim)
         """
         B, N, W, C = content.shape
-        style = style_code.permute(2, 0, 1, 3).reshape(W, B * N, C)
+        if content.shape != style_code.shape:
+            style = style_code.reshape(B, N, 1, C).expand(B, N, W, C)
+        else:
+            style=style_code
+        style = style.permute(2, 0, 1, 3).reshape(W, B * N, C)
         # (W, B*N, C)
 
         content = content.permute(2, 0, 1, 3).reshape(W, B * N, C)
         # (W, B*N, C)
         tgt = torch.zeros_like(style)
-        pos_embed = self.pos_embed(W)
+        pos_embed = self.pos_emb(W)
         pos_embed = pos_embed.permute(1, 0, 2)
 
 

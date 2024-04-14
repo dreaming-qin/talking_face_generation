@@ -138,10 +138,10 @@ def run(config):
     train_dataset=Exp3DMMdataset(config,type='train',frame_num=1)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=5, 
+        batch_size=11, 
         shuffle=True,
         drop_last=False,
-        num_workers=3,
+        num_workers=6,
         collate_fn=train_dataset.collater
     )
     # 验证集
@@ -231,7 +231,7 @@ def run(config):
             optimizer.step()
             # print(f'训练用时间{time.time()-s}')
 
-        train_logger.info(f'第{epoch}次迭代获得的loss值为{epoch_loss}')
+        train_logger.info(f'第{epoch}次迭代获得的loss值为{epoch_loss}，平均值是{epoch_loss/len(train_dataloader)}')
         eval_metrices=eval(exp_model,render,eval_dataloader,checkpoint=None)
         test_logger.info(f'第{epoch}次后，对模型进行验证，验证获得的结果为{eval_metrices}')
         # 如果验证结果好，保存训练模型

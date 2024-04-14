@@ -31,33 +31,6 @@ predictor = dlib.shape_predictor('./checkpoint/shape_predictor_68_face_landmarks
 
 
 
-def get_video_style_clip(face3d_exp, style_max_len, start_idx="random", dtype=torch.float32):
-    
-
-    face3d_exp = torch.tensor(face3d_exp, dtype=dtype)
-    length = face3d_exp.shape[0]
-    if length >= style_max_len:
-        clip_num_frames = style_max_len
-        if start_idx == "random":
-            clip_start_idx = np.random.randint(low=0, high=length - clip_num_frames + 1)
-        elif start_idx == "middle":
-            clip_start_idx = (length - clip_num_frames + 1) // 2
-        elif isinstance(start_idx, int):
-            clip_start_idx = start_idx
-        else:
-            raise ValueError(f"Invalid start_idx {start_idx}")
-
-        face3d_clip = face3d_exp[clip_start_idx : clip_start_idx + clip_num_frames]
-        pad_mask = torch.tensor([False] * style_max_len)
-    else:
-        padding = torch.zeros(style_max_len - length, face3d_exp.shape[1])
-        face3d_clip = torch.cat((face3d_exp, padding), dim=0)
-        pad_mask = torch.tensor([False] * length + [True] * (style_max_len - length))
-
-    return face3d_clip, pad_mask
-
-
-
 class Exp3DMMdataset(torch.utils.data.Dataset):
     r'''用于训练EXP 3DMM提取模块的数据集，需要获得输入，以及LOSS函数需要的输入'''
 
@@ -119,7 +92,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         frame_index_list=random.sample(range(len(data['face_video'])),self.frame_num)
         frame_index_list=[[i] for i in frame_index_list]
         for temp in frame_index_list:
-            for _ in range(self.audio_win_size+self.exp_3dmm_win_size):
+            for _ in range(self.exp_3dmm_win_size):
                 temp.append(min(temp[-1]+1,len(data['face_video'])-1))
                 temp.insert(0,max(temp[0]-1,0))
                 # temp+=[temp[-1],temp[-1]]
@@ -170,7 +143,7 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
     def process_audio(self,data):
         frame_index_list=copy.deepcopy(data['frame_index'])
         for temp in frame_index_list:
-            for _ in range(self.audio_win_size+self.exp_3dmm_win_size):
+            for _ in range(self.exp_3dmm_win_size):
                 temp.append(temp[-1]+1)
                 temp.insert(0,max(temp[0]-1,0))
         input_audio_data=data['audio_mfcc']

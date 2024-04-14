@@ -49,6 +49,9 @@ class Exp3DMM(nn.Module):
         B,L,C,H,W=transformer_video.shape
         transformer_video=transformer_video.reshape(-1,C,H,W)
         video_feature=self.video_encoder(transformer_video)
+        # [B,Len,video dim]
+        video_feature=video_feature.reshape(B,L,-1)
+
 
         # # test，测试audio feature与video feature大小
         # import imageio
@@ -78,20 +81,10 @@ class Exp3DMM(nn.Module):
         # imageio.imsave('temp_oa2na.png',feature)
 
 
-        # [B,Len,video dim]
-        video_feature=video_feature.reshape(B,L,-1)
-        # [B,len,win_size,audio dim]
-        audio_feature=get_window(audio_feature,self.win_size)
-        audio_feature=audio_feature[:,self.win_size:-self.win_size]
-        # [B,len,win_size,video dim]
-        video_feature=get_window(video_feature,self.win_size)
-        video_feature=video_feature[:,self.win_size:-self.win_size]
-
-
         # test，测试音频是否能同步唇形
-        # exp3DMM=self.fusion_module(audio_feature,audio_feature)
+        exp3DMM=self.fusion_module(audio_feature,audio_feature)
 
-        exp3DMM=self.fusion_module(audio_feature,video_feature)
+        # exp3DMM=self.fusion_module(audio_feature,video_feature)
         return exp3DMM
     
 # 测试代码

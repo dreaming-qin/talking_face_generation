@@ -14,6 +14,7 @@ class AudioEncoder(nn.Module):
 
         self.mapping_net=nn.Sequential(
             nn.Linear(13,64),
+            nn.ReLU(True),
             nn.Linear(64,128),
             nn.ReLU(True),
             nn.Linear(128,256),
@@ -35,13 +36,12 @@ class AudioEncoder(nn.Module):
         # 音频长度28
         self.pos=PositionalEncoding(feature_dim, n_position=seq_len)
 
-        self.self_atten=SelfAttentionPooling(input_dim=feature_dim)
 
 
 
     def forward(self,audio):
         '''audio输入维度[B,len,28,mfcc dim(13)]
-        输出维度[B,len,256]'''
+        输出维度[B,len,28,256]'''
 
         out=self.mapping_net(audio)
 
@@ -52,8 +52,7 @@ class AudioEncoder(nn.Module):
         out=out+pos_embd
         out=self.encoder(out)
 
-        out=self.self_atten(out)
-        out=out.reshape(B,L,dim)
+        out=out.reshape(B,L,-1,dim)
 
         return out
     
