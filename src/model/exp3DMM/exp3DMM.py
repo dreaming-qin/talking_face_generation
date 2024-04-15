@@ -40,9 +40,9 @@ class Exp3DMM(nn.Module):
         self.win_size=cfg['audio_win_size']
 
     def forward(self, transformer_video, audio_MFCC):
-        """transformer_video输入维度[b,len(37),3,H,W]
-        audio_MFCC输入维度[B,LEN(37),20,mel dim(80)]
-        输出维度[B,len,3dmm dim]
+        """transformer_video输入维度[b,len(27),3,H,W]
+        audio_MFCC输入维度[B,LEN(27),len(28),mfcc dim(13)]
+        输出维度[B,len(27),3dmm dim(64)]
         """
         # [B,len,audio dim]
         audio_feature=self.audio_encoder(audio_MFCC)

@@ -89,9 +89,7 @@ def generate_video(config):
                                              os.path.basename(config['audio_file']).replace('.pkl',''))
     save_file='{}/result/merge/{}'.format(config['result_dir'],file)
     # 从左到右以此是（源图片，姿势视频，音频视频，生成视频）
-    # test
-    mask_video=data['video'].squeeze(0)[5:-5]
-
+    mask_video=data['video'].squeeze(0)
     img_video=data['img'].permute(0,2,3,1)
     pose_real_video=data['pose_real_video']
     audio_real_video=data['audio_real_video']
@@ -177,16 +175,8 @@ def get_data(config):
     ans['img']=ans['img'][:min_len]
     # 输入音频
     ans['audio']=ans['audio'][:min_len]
-    # 因为audio窗口问题，需要扩展
-    temp_first=ans['audio'][0].expand(config['audio_win_size'],-1,-1)
-    temp_last=ans['audio'][-1].expand(config['audio_win_size'],-1,-1)
-    ans['audio']=torch.cat((temp_first,ans['audio'],temp_last))
     # 输入视频
     ans['video']=ans['video'][:min_len]
-    # 因为video窗口问题，需要扩展
-    temp_first=ans['video'][0].expand(config['audio_win_size'],-1,-1,-1)
-    temp_last=ans['video'][-1].expand(config['audio_win_size'],-1,-1,-1)
-    ans['video']=torch.cat((temp_first,ans['video'],temp_last))
 
     # 第三步，最后的一些处理
     for key,value in ans.items():
@@ -227,14 +217,14 @@ if __name__ == '__main__':
     # id_M003_front_angry_level_1_030_pose_M019_front_sad_level_3_013_audio_M003_front_angry_level_3_011
     # id_M003_front_angry_level_1_030_pose_M003_front_angry_level_3_011_audio_M003_front_angry_level_3_011
     # 当前的输入文件为了省事，是面向已经处理好的pkl文件
-    config['audio_file']='data_mead/format_data/train/0/M019_front_sad_level_3_013.pkl'
-    config['img_file']='data_mead/format_data/train/26/M003_front_angry_level_3_011.pkl'
-    config['pose_file']='data_mead/format_data/train/0/M019_front_sad_level_3_013.pkl'
+    # config['audio_file']='data_mead/format_data/train/0/M019_front_sad_level_3_013.pkl'
+    # config['img_file']='data_mead/format_data/train/26/M003_front_angry_level_3_011.pkl'
+    # config['pose_file']='data_mead/format_data/train/0/M019_front_sad_level_3_013.pkl'
 
 
-    # config['audio_file']='data_mead/format_data/test/0/M003_front_disgusted_level_1_009.pkl'
-    # config['img_file']='data_mead/format_data/test/0/M005_front_neutral_level_1_001.pkl'
-    # config['pose_file']='data_mead/format_data/test/0/M009_front_angry_level_2_022.pkl'
+    config['audio_file']='data_mead/format_data/test/0/M003_front_angry_level_3_025.pkl'
+    config['img_file']='data_mead/format_data/test/0/M005_front_neutral_level_1_001.pkl'
+    config['pose_file']='data_mead/format_data/test/0/M009_front_angry_level_2_022.pkl'
 
 
 

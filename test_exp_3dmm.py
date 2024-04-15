@@ -124,10 +124,6 @@ def to_device(data,device,config):
         ans['real_video']=ans['real_video'][:len(ans['audio'])]
     else:
         ans['audio']=ans['audio'][:len(ans['real_video'])]
-    # 因为audio窗口问题，需要扩展
-    temp_first=ans['audio'][0].expand(config['audio_win_size'],-1,-1)
-    temp_last=ans['audio'][-1].expand(config['audio_win_size'],-1,-1)
-    ans['audio']=torch.cat((temp_first,ans['audio'],temp_last))
     
     # 获得输入video
     video=data['face_video']
@@ -144,11 +140,6 @@ def to_device(data,device,config):
     #         noise=np.random.randint(0,256,(bottom_temp-top_temp,right_temp-left_temp,3))
     #         img[top_temp:bottom_temp,left_temp:right_temp]=noise
     ans['video']=torch.tensor((video/255*2)-1).to(device).float()
-
-    # 因为video窗口问题，需要扩展
-    temp_first=ans['video'][0].expand(config['audio_win_size'],-1,-1,-1)
-    temp_last=ans['video'][-1].expand(config['audio_win_size'],-1,-1,-1)
-    ans['video']=torch.cat((temp_first,ans['video'],temp_last))
     
     # pose信息获得
     mat_dict = data['face_coeff']
