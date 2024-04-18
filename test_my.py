@@ -140,54 +140,22 @@ def format_data(file):
 '''往data中加入path'''
 if __name__=='__main__':
     set_start_method('spawn')
+    
+    with open('data_mead/format_data/eval/0/M003_front_angry_level_3_015.pkl','rb') as f:
+        byte_file=f.read()
+    byte_file=zlib.decompress(byte_file)
+    data= pickle.loads(byte_file)
+
     # 重新处理音频，生成data_vox2
-    file_list=glob.glob('data_mead/format_data/*/*/*.pkl')
-    # file_list=['data_mead/format_data/train/2/M011_front_fear_level_3_017.pkl']
+    file_list=glob.glob('data_mead/format_data/test/*/*.pkl')
     random.shuffle(file_list)
+    file_list=file_list[:50]
+    temp=[]
+    for file in file_list:
+        temp.append(os.path.abspath(file))
+    np.save('test_dataset.npy',temp)
 
-    index=0
-    # 'data_mead/format_data/train/2/M011_front_fear_level_3_017.pkl'
-    for pkl_file in file_list:
-        # 解压pkl文件
-        with open(pkl_file,'rb') as f:
-            byte_file=f.read()
-        byte_file=zlib.decompress(byte_file)
-        data= pickle.loads(byte_file)
-
-        video_path=data['path']
-
-        # 检测是否到4s
-        reader=imageio.get_reader(video_path)
-        video=[im for im in reader]
-        reader.close()
-        if len(video)<120:
-            continue
-
-        # 裁剪人脸
-        face_video,_=get_face_image(video,'mead')
-        # 存为png序列
-        os.makedirs('aghs',exist_ok=True)
-        for i,img in enumerate(face_video):
-            imageio.imwrite(f'aghs/{i}.png',img)
-        # 再通过 png转为video
-        cmd='ffmpeg -framerate 30 -i aghs/%d.png -c:v libx265 -pix_fmt yuv420p -preset ultrafast -x265-params lossless=1 -y dada.mp4'
-        os.system(cmd)
-        shutil.rmtree('aghs')
-        # video与音频融合
-        os.makedirs('temp',exist_ok=True)
-        cmd ='ffmpeg -i {} -i {} -loglevel error -c copy -map 0:0 -map 1:1 -y -shortest {}'.format(
-                'dada.mp4',video_path,f'CCC.mp4')
-        os.system(cmd)
-        # 裁剪4s，保存
-        cmd ='ffmpeg -ss 0:00 -i CCC.mp4 -t 4 -c:v copy -c:a copy {}'.format(f'temp/{os.path.basename(pkl_file)[:-4]}.mp4')
-        os.system(cmd)
-
-        os.remove('dada.mp4')
-        os.remove('CCC.mp4')
-        index+=1
-        print(index)
-        if index>=15:
-            break
+    
 
 
 

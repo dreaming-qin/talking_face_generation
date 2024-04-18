@@ -82,9 +82,9 @@ class Exp3DMM(nn.Module):
 
 
         # test，测试音频是否能同步唇形
-        exp3DMM=self.fusion_module(audio_feature,audio_feature)
+        # exp3DMM=self.fusion_module(audio_feature,audio_feature)
 
-        # exp3DMM=self.fusion_module(audio_feature,video_feature)
+        exp3DMM=self.fusion_module(audio_feature,video_feature)
         return exp3DMM
     
 # 测试代码

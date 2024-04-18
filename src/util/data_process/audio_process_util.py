@@ -27,12 +27,10 @@ def process_audio(video_dir):
 
         # 获取音频信息
         mfcc=process_train_audio(audio_file)
-        hugebert=process_syncNet_audio(audio_file)
         
         # 写入数据
         info={}
-        info['input_audio_mfcc']=mfcc
-        info['syncNet_audio']=hugebert
+        info['audio_mfcc']=mfcc
         with open(video_file.replace('.mp4','_audio.pkl'),'wb') as f:
             info =  pickle.dumps(info)
             f.write(info)
@@ -46,7 +44,8 @@ def process_train_audio(audio_file):
     speech, samplerate = sf.read(audio_file)
     # 16kHz对应25帧的换算方式
     fps=samplerate*25/16000
-    speech=speech[:,0]
+    if len(speech.shape)==2:
+        speech=speech[:,0]
     speech = np.insert(speech, 0, np.zeros(1920))
     speech = np.append(speech, np.zeros(1920))
     mfcc = python_speech_features.mfcc(speech,samplerate,winstep=1/(fps*4))

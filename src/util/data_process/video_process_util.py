@@ -115,12 +115,13 @@ def get_face_image(driving_video,dataset_name):
                 bottom=min(max(bottom,rects[-1].bottom()+round(0.0926*image_height)),video_array.shape[1])
                 left=max(min(left,rects[-1].left()-round(0.0781*image_width)),0)
                 right=min(max(right,rects[-1].right()+round(0.0781*image_width)),video_array.shape[2])
+            if i==10:
+                break
         elif dataset_name == 'vox':
             top=image_height
             bottom=0
             left=0
             right=image_width
-        if i==10:
             break
     
     if top==100000:

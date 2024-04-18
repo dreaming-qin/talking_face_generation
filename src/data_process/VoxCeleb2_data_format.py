@@ -82,15 +82,6 @@ def format_data(dir_name):
     for video_path in video_list:
         with open(video_path.replace('.mp4','_temp1.pkl'),'rb') as f:
             info= pickle.load(f)
-        
-        # 检验：当检测不到人脸时，产生全零，需要删除文件
-        # 没有视频信息的，直接弃用
-        frame=info['face_video'][0]
-        if np.sum(frame==0)>3*256*256/4:
-            os.remove(video_path)
-            os.remove(video_path.replace('.mp4','_temp1.pkl'))
-            continue
-
         face_video=info['face_video']
         imageio.mimsave(f'{dir_name}/temp/{os.path.basename(video_path)}',face_video)
     # 获得3dmm
@@ -148,23 +139,31 @@ def merge_data(dir_name):
         # 获得音频的数据
         with open(video_path.replace('.mp4','_audio.pkl'),'rb') as f:
             temp = pickle.load(f)
-        info['audio_mfcc']=temp['input_audio_mfcc']
-        info['audio_hugebert']=temp['syncNet_audio']
+        info['audio_mfcc']=temp['audio_mfcc']
+
+        # 完了之后，删除pkl文件
+        os.remove(video_path.replace('.mp4','_video.pkl'))
+        os.remove(video_path.replace('.mp4','_audio.pkl'))
+        
+        # 没有视频信息的，直接弃用
+        frame=info['face_video'][0]
+        if np.sum(frame==0)>3*256*256/4:
+            continue
+
+        # # 没有音频信息的，直接弃用
+        # word=info['audio_word']
+        # if len(word)==0:
+        #     continue
 
         # 对齐音频数据
-        if len(info['audio_mfcc'])<len(info['face_video']):
+        print('进程{}处理{}，裁剪了{}'.format(os.getpid(),video_path,len(info['face_video'])-len(info['audio_mfcc'])))
+        if len(info['audio_mfcc'])>=len(info['face_video']):
+            info['audio_mfcc']=info['audio_mfcc'][:len(info['face_video'])]
+        else:
             temp_last=torch.tensor(info['audio_mfcc'][-1]).expand(len(info['face_video'])-len(info['audio_mfcc']),-1,-1)
             info['audio_mfcc']=np.concatenate((info['audio_mfcc'],temp_last.numpy()))
-        else:
-            info['audio_mfcc']=info['audio_mfcc'][:len(info['face_video'])]
-        if len(info['audio_hugebert'])<2*len(info['face_video']):
-            temp_last=torch.tensor(info['audio_hugebert'][-1]).expand(2*len(info['face_video'])-len(info['audio_hugebert']),-1)
-            info['audio_hugebert']=np.concatenate((info['audio_hugebert'],temp_last.numpy()))
-        else:
-            info['audio_hugebert']=info['audio_hugebert'][:2*len(info['face_video'])]
         # 检验长度对齐
         assert len(info['face_coeff']['coeff'])==len(info['face_video'])
-        assert len(info['audio_hugebert'])==2*len(info['face_video'])
         assert len(info['audio_mfcc'])==len(info['face_video'])
 
         # 获得最终数据，使用压缩操作
@@ -173,10 +172,6 @@ def merge_data(dir_name):
         with open(video_path.replace('.mp4','.pkl'),'wb') as f:
             f.write(info)
     
-        # 完了之后，删除没有必要的数据
-        os.remove(video_path.replace('.mp4','_video.pkl'))
-        os.remove(video_path.replace('.mp4','_audio.pkl'))
-        
         # test，测试遮罩效果
         # import imageio
         # mouth_mask=info['mouth_mask']
@@ -292,21 +287,21 @@ if __name__=='__main__':
     # 由于vox的数据来源于随机抽检，而我们的数据预处理方法基于文件夹，需要创建临时文件夹进行数据存放
     # 视频命名格式是id_标识_编号.mp4
     # 存储路径是'{dataset_root}/train_part/{index}/*.mp4'
-    filenames=np.load('vox_list.npy').tolist()
-    save_path=f'{dataset_root}/train_part'
-    index=-1
-    for i,file in tqdm(enumerate(filenames)):
-        if i%500==0:
-            index+=1
-            os.makedirs(f'{save_path}/{index}',exist_ok=True)
-        file_copy=file
-        dir_list=[]
-        for _ in range(3):
-            dir_list.append(os.path.basename(file_copy))
-            file_copy=os.path.dirname(file_copy)
-        file_name=f'{dir_list[2]}_{dir_list[1]}_{dir_list[0]}'
-        file_name=f'{save_path}/{index}/{file_name}'
-        shutil.copyfile(file,file_name)
+    # filenames=np.load('vox_list.npy').tolist()
+    # save_path=f'{dataset_root}/train_part'
+    # index=-1
+    # for i,file in tqdm(enumerate(filenames)):
+    #     if i%500==0:
+    #         index+=1
+    #         os.makedirs(f'{save_path}/{index}',exist_ok=True)
+    #     file_copy=file
+    #     dir_list=[]
+    #     for _ in range(3):
+    #         dir_list.append(os.path.basename(file_copy))
+    #         file_copy=os.path.dirname(file_copy)
+    #     file_name=f'{dir_list[2]}_{dir_list[1]}_{dir_list[0]}'
+    #     file_name=f'{save_path}/{index}/{file_name}'
+    #     shutil.copyfile(file,file_name)
 
     dir_list=sorted(glob.glob(f'{dataset_root}/train_part/*'))
 
@@ -318,32 +313,32 @@ if __name__=='__main__':
     # dir_list=dir_list[index:]
 
     # test
-    # dir_list=['temp']
+    # dir_list=['data_vox']
     # for file_list in dir_list:
-    #     check_data(dir_list[3])
-    #     format_data(dir_list[3])
+    #     check_data(file_list)
+    #     format_data(file_list)
     #     merge_data(file_list)
-    #     move_data(config)
+        # move_data(config)
 
     
-    # workers=5
-    # pool = Pool(workers)
-    # for _ in pool.imap_unordered(check_data,dir_list):
-    #     None
+    workers=5
+    pool = Pool(workers)
+    for _ in pool.imap_unordered(check_data,dir_list):
+        None
 
-    # print(logger.info('\n检验数据完毕，现在开始处理数据\n'))
-    # workers=3
-    # pool = Pool(workers)
-    # for _ in pool.imap_unordered(format_data,dir_list):
-    #     None
-    # pool.close()
+    print(logger.info('\n检验数据完毕，现在开始处理数据\n'))
+    workers=3
+    pool = Pool(workers)
+    for _ in pool.imap_unordered(format_data,dir_list):
+        None
+    pool.close()
 
-    # print(logger.info('\n获得的数据已处理完毕，现在合并文件\n'))
-    # workers=5
-    # pool = Pool(workers)
-    # for _ in pool.imap_unordered(merge_data,dir_list):
-    #     None
-    # pool.close()
+    print(logger.info('\n获得的数据已处理完毕，现在合并文件\n'))
+    workers=5
+    pool = Pool(workers)
+    for _ in pool.imap_unordered(merge_data,dir_list):
+        None
+    pool.close()
 
     # move_data(config)
 

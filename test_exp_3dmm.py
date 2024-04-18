@@ -32,7 +32,8 @@ def generate_video(config):
     输出是视频'''
 
     # 加载device
-    device = torch.device(config['device_id'][0] if torch.cuda.is_available() else "cpu")
+    # device = torch.device(config['device_id'][0] if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0")
 
     #render model
     render=Render(config['mapping_net'],config['warpping_net'],
@@ -58,7 +59,8 @@ def generate_video(config):
     exp_model.eval()
 
     # 拿数据
-    file_list=sorted(glob.glob('{}/test/*/*.pkl'.format(config['format_output_path'])))
+    # file_list=sorted(glob.glob('{}/test/*/*.pkl'.format(config['format_output_path'])))
+    file_list=np.load('test_dataset.npy')
     file_list=np.array(file_list)[:config['video_num']].tolist()
     print('生成视频中...')
     for file in tqdm(file_list):
@@ -182,24 +184,14 @@ if __name__ == '__main__':
     # 由于GPU限制，得10张10张的往GPU送
     config['frame_num']=10
     # 设置生成的视频数量最大值
-    config['video_num']=500
-
+    config['video_num']=50
 
     generate_video(config)
-    # get_metrices(config)
+    get_metrices(config)
 
-    # # test
-    # real_dir='{}/result/real'.format(config['result_dir'])
-    # fake_dir='{}/result/fake'.format(config['result_dir'])
-    # from src.metrics.SyncNet import sync_net_by_dir
-    # print('获得结果...')
-    # metrices_dict={}
-    # c,d,gt_c,gt_d=\
-    #     sync_net_by_dir(fake_dir,real_dir)
-    # print(f'{c} {d} {gt_c} {gt_d}')
 
     # test，获得其它方法的结果
-    # method=['make','pc_avs','exp3DMM']
-    # for b in method:
-    #     config['result_dir']=f'result/{b}'
-    #     get_metrices(config)
+    method=['eamm','exp3DMM','pc_avs']
+    for b in method:
+        config['result_dir']=f'result/{b}'
+        get_metrices(config)

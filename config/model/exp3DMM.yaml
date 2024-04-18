@@ -58,7 +58,7 @@ result_dir: "result/exp3DMM"
 epoch: 10000
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [10,25]
+lr_scheduler_step: [5]
 
-exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_23_metrices_0.8994102512016753.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_7_metrices_0.9177592851040279.pth"
 render_pre_train: "checkpoint/render/edit_epoch_23_metrices_0.9345089584052061.pth"
