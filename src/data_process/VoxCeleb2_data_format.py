@@ -107,7 +107,7 @@ def merge_data(dir_name):
     logger.info('进程{}合并文件夹{}的内容'.format(os.getpid(),dir_name))
 
     # 对视频的整理
-    filenames = glob.glob(f'{dir_name}/*.mp4')
+    filenames = sorted(glob.glob(f'{dir_name}/*.mp4'))
     for video_path in filenames:
         info={}
         info['path']=video_path
@@ -303,11 +303,16 @@ if __name__=='__main__':
     #     file_name=f'{save_path}/{index}/{file_name}'
     #     shutil.copyfile(file,file_name)
 
-    dir_list=sorted(glob.glob(f'{dataset_root}/train_part/*'))
+    # dir_list=sorted(glob.glob(f'{dataset_root}/train_part/*'))
+    # 只用36个就行
+    index_list=[i for i in range(23)]
+    dir_list=[]
+    for index in index_list:
+        dir_list.append(f'{dataset_root}/train_part/{index}')
 
     # index=0
     # for i,dir in enumerate(dir_list):
-    #     if '/workspace/dataset/MEAD/W026/video/front/happy/level_2' in dir:
+    #     if '/workspace/dataset/voxceleb/train/train_part/23' in dir:
     #         index=i
     #         break
     # dir_list=dir_list[index:]
@@ -321,17 +326,17 @@ if __name__=='__main__':
         # move_data(config)
 
     
-    workers=5
-    pool = Pool(workers)
-    for _ in pool.imap_unordered(check_data,dir_list):
-        None
+    # workers=5
+    # pool = Pool(workers)
+    # for _ in pool.imap_unordered(check_data,dir_list):
+    #     None
 
-    print(logger.info('\n检验数据完毕，现在开始处理数据\n'))
-    workers=3
-    pool = Pool(workers)
-    for _ in pool.imap_unordered(format_data,dir_list):
-        None
-    pool.close()
+    # print(logger.info('\n检验数据完毕，现在开始处理数据\n'))
+    # workers=3
+    # pool = Pool(workers)
+    # for _ in pool.imap_unordered(format_data,dir_list):
+    #     None
+    # pool.close()
 
     print(logger.info('\n获得的数据已处理完毕，现在合并文件\n'))
     workers=5

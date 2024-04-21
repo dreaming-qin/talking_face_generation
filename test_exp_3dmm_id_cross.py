@@ -222,9 +222,9 @@ if __name__ == '__main__':
     # config['pose_file']='data_mead/format_data/train/0/M019_front_sad_level_3_013.pkl'
 
 
-    config['audio_file']='data_mead/format_data/test/0/M003_front_angry_level_3_025.pkl'
-    config['img_file']='data_mead/format_data/test/0/M005_front_neutral_level_1_001.pkl'
-    config['pose_file']='data_mead/format_data/test/0/M007_front_happy_level_3_026.pkl'
+    config['audio_file']='data_mead/format_data/test/0/M022_front_neutral_level_1_022.pkl'
+    config['img_file']='data_mead/format_data/test/0/W014_front_neutral_level_1_023.pkl'
+    config['pose_file']='data_mead/format_data/test/0/M009_front_angry_level_2_022.pkl'
 
 
 

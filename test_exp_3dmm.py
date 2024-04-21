@@ -186,12 +186,12 @@ if __name__ == '__main__':
     # 设置生成的视频数量最大值
     config['video_num']=50
 
-    generate_video(config)
-    get_metrices(config)
+    # generate_video(config)
+    # get_metrices(config)
 
 
     # test，获得其它方法的结果
-    method=['eamm','exp3DMM','pc_avs']
+    method=['atvg']
     for b in method:
         config['result_dir']=f'result/{b}'
         get_metrices(config)

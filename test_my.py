@@ -140,20 +140,30 @@ def format_data(file):
 '''往data中加入path'''
 if __name__=='__main__':
     set_start_method('spawn')
-    
-    with open('data_mead/format_data/eval/0/M003_front_angry_level_3_015.pkl','rb') as f:
-        byte_file=f.read()
-    byte_file=zlib.decompress(byte_file)
-    data= pickle.loads(byte_file)
+    pkl_list=sorted(glob.glob(f'data_mead/format_data/test/*/*.pkl'))
+    for pkl_file in tqdm(pkl_list):
+        with open(pkl_file,'rb') as f:
+            byte_file=f.read()
+        byte_file=zlib.decompress(byte_file)
+        data= pickle.loads(byte_file)
 
-    # 重新处理音频，生成data_vox2
-    file_list=glob.glob('data_mead/format_data/test/*/*.pkl')
-    random.shuffle(file_list)
-    file_list=file_list[:50]
-    temp=[]
-    for file in file_list:
-        temp.append(os.path.abspath(file))
-    np.save('test_dataset.npy',temp)
+        face_video=data['face_video']
+        imageio.mimsave(f'adaas.mp4',face_video,fps=25)
+
+        video_file=data['path']
+        cmd ='ffmpeg -i {} -i {} -loglevel error -c copy -map 0:0 -map 1:1 -y -shortest {}'.format(
+            f'adaas.mp4',video_file,f'temp/{os.path.basename(pkl_file)[:-4]}.mp4') 
+        os.system(cmd)
+    os.remove('adaas.mp4')
+
+    # # 重新处理音频，生成data_vox2
+    # file_list=glob.glob('data_mead/format_data/test/*/*.pkl')
+    # random.shuffle(file_list)
+    # file_list=file_list[:50]
+    # temp=[]
+    # for file in file_list:
+    #     temp.append(os.path.abspath(file))
+    # np.save('test_dataset.npy',temp)
 
     
 
