@@ -171,24 +171,14 @@ if __name__ == '__main__':
     config['video_num']=100
 
     # 当前的输入文件为了省事，是面向已经处理好的pkl文件
-    config['src_file']='data_mead/format_data/train/11/M003_front_neutral_level_1_022.pkl'
-    config['target_file']='data_mead/format_data/train/24/M012_front_sad_level_3_011.pkl'
+    config['src_file']='data_mead/format_data/test/0/W014_front_neutral_level_1_023.pkl'
+    config['target_file']='data_mead/format_data/test/0/M009_front_angry_level_2_022.pkl'
 
-    file_list=sorted(glob.glob('data_mead/format_data/*/*/*_front_sad_level_3*.pkl'))
-    for file in file_list:
-        if 'train' in file:
-            continue
-        config['target_file']=file
         
-        # src_data=decompress(config['src_file'])
-        # tgt_data=decompress(config['target_file'])
+    generate_video(config)
 
-        # imageio.mimsave('temp2.mp4',tgt_data['face_video'])
-        
-        generate_video(config)
-
-        # test，获得其它方法的结果
-        # method=['make','pc_avs','exp3DMM']
-        # for b in method:
-        #     config['result_dir']=f'result/{b}'
-        #     get_metrices(config)
+    # test，获得其它方法的结果
+    # method=['make','pc_avs','exp3DMM']
+    # for b in method:
+    #     config['result_dir']=f'result/{b}'
+    #     get_metrices(config)

@@ -138,7 +138,7 @@ def run(config):
         batch_size=7, 
         shuffle=True,
         drop_last=False,
-        num_workers=4,
+        num_workers=7,
         collate_fn=train_dataset.collater
     )     
     # 验证集

@@ -3,7 +3,7 @@ import zlib
 import pickle
 import torch
 import numpy as np
-import dlib
+import os
 import random
 from torchvision import transforms
 
@@ -31,6 +31,23 @@ class RenderDataset(torch.utils.data.Dataset):
         self.win_size=config['render_win_size']
         self.frame_num=frame_num
 
+        
+        self.format_path=format_path
+        self.img_dict={}
+        if 'mead' in format_path:
+            if 'train'==type:
+                file_list=self.filenames
+            else:
+                file_list=sorted(glob.glob(f'{format_path}/*/*/*.pkl'))
+            for file in file_list:
+                name,_,emo,_,_,video_num=os.path.basename(file)[:-4].split('_')
+                if 'neutral' == emo:
+                    if not f'{name}_{emo}' in self.img_dict:
+                        self.img_dict[f'{name}_{emo}' ]={}
+                    if not f'{video_num}' in self.img_dict[f'{name}_{emo}']:
+                        self.img_dict[f'{name}_{emo}'][f'{video_num}' ]=[]
+                    self.img_dict[f'{name}_{emo}'][f'{video_num}' ].append(file)
+
     def __len__(self):
         return len(self.filenames)
 
@@ -42,8 +59,22 @@ class RenderDataset(torch.utils.data.Dataset):
         byte_file=zlib.decompress(byte_file)
         data= pickle.loads(byte_file)
         out={}
+
+        
+        # 对参考图片，使用中性视频中的图片表示
+        if 'mead' in self.format_path:
+            name,_,_,_,_,video_num=os.path.basename(file)[:-4].split('_')
+            if f'{video_num}' not in self.img_dict[f'{name}_neutral']:
+                src_key=random.sample(self.img_dict[f'{name}_neutral'].keys(),1)[0]
+                src_file=self.img_dict[f'{name}_neutral'][src_key][0]
+            else:
+                src_file=self.img_dict[f'{name}_neutral'][f'{video_num}'][0]
+            with open(src_file,'rb') as f:
+                byte_file=f.read()
+            byte_file=zlib.decompress(byte_file)
+            src_data= pickle.loads(byte_file)
         # 下列的self.process方法中，需要根据frame_index拿出合法数据
-        video_data,data['frame_index']=self.process_video(data)
+        video_data,data['frame_index']=self.process_video(data,src_data)
         # [frame num,H,W,3]
         src=(video_data[0]/255*2)-1
         # [frame num,H,W,3]
@@ -66,20 +97,25 @@ class RenderDataset(torch.utils.data.Dataset):
 
         return out
 
-    def process_video(self,data):
+    def process_video(self,data,src_data):
         r'''返回(src,target),frame_index这样的数据'''
         video_data=data['face_video']
+        src_video_data=src_data['face_video']
 
         # 由于要生成序列性的视频，需要取一段连续的序列
         # 从video中随机选择frame_num张帧
         temp_index=random.sample(range(len(video_data)),self.frame_num)
+        src_temp_index=random.sample(range(len(src_video_data)),self.frame_num)
+
         src=[]
         target=[]
         for i in range(self.frame_num):
             target.append(video_data[temp_index[i]])
-            src.append(video_data[temp_index[(i+1)%self.frame_num]])
-        if self.frame_num==1:
-            src=[video_data[random.choice(range(len(video_data)))]]
+            src.append(src_video_data[src_temp_index[i]])
+
+        # if self.frame_num==1:
+        #     src=[video_data[random.choice(range(len(video_data)))]]
+
         frame_index=temp_index
         src=np.array(src)
         target=np.array(target)
@@ -186,4 +222,4 @@ if __name__=='__main__':
         for key,value in data.items():
             print('{}形状为{}'.format(key,value.shape))
             # 需要[len,H,W,3]，且为像素取值范围为0-255
-            torchvision.io.write_video('temp.mp4', ((value+1)/2*255).permute(0,2,3,1).cpu(), fps=5)
+            # torchvision.io.write_video('temp.mp4', ((value+1)/2*255).permute(0,2,3,1).cpu(), fps=5)
