@@ -1,6 +1,7 @@
 mead_root_path: 'data_mead'
 voxceleb2_root_path: '/workspace/dataset/voxceleb/train'
-format_output_path: 'data_mead/format_data'
+improv_root_path: '/workspace/dataset/improv'
+format_output_path: 'data_vox/format_data'
 
 # # 数据预处理时，根据特定数据集选择特定方法处理，当前值只有'mead'和'vox'
 # type: 'vox'

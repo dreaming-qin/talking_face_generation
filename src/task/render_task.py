@@ -125,9 +125,9 @@ def run(config):
 
     # logger
     # 记录日常事务的log（包括训练信息）
-    train_logger = logger_config(log_path='train_render.log', logging_name='train_render')
+    train_logger = logger_config(log_path='train_render_vox.log', logging_name='train_render')
     # 记录test结果的log
-    test_logger = logger_config(log_path='test_render.log', logging_name='test_render')
+    test_logger = logger_config(log_path='test_render_vox.log', logging_name='test_render')
 
     # 数据集loader
     # 训练集

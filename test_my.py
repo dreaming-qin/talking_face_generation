@@ -156,14 +156,14 @@ if __name__=='__main__':
         os.system(cmd)
     os.remove('adaas.mp4')
 
-    # # 重新处理音频，生成data_vox2
-    # file_list=glob.glob('data_mead/format_data/test/*/*.pkl')
-    # random.shuffle(file_list)
-    # file_list=file_list[:50]
-    # temp=[]
-    # for file in file_list:
-    #     temp.append(os.path.abspath(file))
-    # np.save('test_dataset.npy',temp)
+    # 重新处理音频，生成data_vox2
+    file_list=glob.glob('data_mead/format_data/test/*/*.pkl')
+    random.shuffle(file_list)
+    file_list=file_list[:50]
+    temp=[]
+    for file in file_list:
+        temp.append(os.path.abspath(file))
+    np.save('test_dataset.npy',temp)
 
     
 

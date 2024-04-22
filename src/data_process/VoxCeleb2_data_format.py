@@ -225,8 +225,7 @@ def move_data(config):
         if cnt%500==0:
             path=os.path.join(out_path,f'test/{cnt//500}')
             os.makedirs(path,exist_ok=True)
-        file_list=file.split('/')
-        out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
+        out_name=os.path.basename(file)
         out_name=os.path.join(path,out_name)
         shutil.move(file,out_name)
         cnt+=1
@@ -235,8 +234,7 @@ def move_data(config):
         if cnt%500==0:
             path=os.path.join(out_path,f'train/{cnt//500}')
             os.makedirs(path,exist_ok=True)
-        file_list=file.split('/')
-        out_name=f'{file_list[-6]}_{file_list[-4]}_{file_list[-3]}_{file_list[-2]}_{file_list[-1]}'
+        out_name=os.path.basename(file)
         out_name=os.path.join(path,out_name)
         shutil.move(file,out_name)
         cnt+=1
@@ -266,6 +264,7 @@ def move_data(config):
 
 if __name__=='__main__':
     set_start_method('spawn')
+
     # 希望各个方法能够做到：输入视频路径，输出pickl的pkl文件
     import yaml
     config={}
@@ -305,7 +304,7 @@ if __name__=='__main__':
 
     # dir_list=sorted(glob.glob(f'{dataset_root}/train_part/*'))
     # 只用36个就行
-    index_list=[i for i in range(23)]
+    index_list=[i for i in range(36)]
     dir_list=[]
     for index in index_list:
         dir_list.append(f'{dataset_root}/train_part/{index}')
@@ -338,13 +337,13 @@ if __name__=='__main__':
     #     None
     # pool.close()
 
-    print(logger.info('\n获得的数据已处理完毕，现在合并文件\n'))
-    workers=5
-    pool = Pool(workers)
-    for _ in pool.imap_unordered(merge_data,dir_list):
-        None
-    pool.close()
+    # print(logger.info('\n获得的数据已处理完毕，现在合并文件\n'))
+    # workers=5
+    # pool = Pool(workers)
+    # for _ in pool.imap_unordered(merge_data,dir_list):
+    #     None
+    # pool.close()
 
-    # move_data(config)
+    move_data(config)
 
 
