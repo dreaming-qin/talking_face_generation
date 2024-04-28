@@ -20,6 +20,17 @@ import python_speech_features
 from torch.multiprocessing import Pool, set_start_method
 import scipy.io.wavfile as wave
 from moviepy.editor import AudioFileClip
+import torch.nn.functional as F
+from scipy.io import loadmat
+from PIL import Image
+try:
+    from PIL.Image import Resampling
+    RESAMPLING_METHOD = Resampling.BICUBIC
+except ImportError:
+    from PIL.Image import BICUBIC
+    RESAMPLING_METHOD = BICUBIC
+import cv2
+
 
 
 
@@ -30,19 +41,9 @@ if __name__=='__main__':
     path=sys.path[0]
     sys.path.append(os.path.join(path,'Deep3DFaceRecon_pytorch'))
 
-from src.util.data_process.video_process_util import video_to_3DMM_and_pose,get_face_image
-from scipy.io import loadmat
-from src.model.syncNet.sync_net import SyncNet
-from src.util.util_3dmm import get_lm_by_3dmm,get_face
-from Deep3DFaceRecon_pytorch.util.util import draw_landmarks
-from src.util.model_util import cnt_params
-from src.model.exp3DMM.self_attention_pooling import SelfAttentionPooling
-from src.model.exp3DMM.fusion import PositionalEncoding
 
-from src.util.data_process.audio_config_pc_avs import AudioConfig
-
-
-
+from Deep3DFaceRecon_pytorch.models.bfm import ParametricFaceModel
+from Deep3DFaceRecon_pytorch.util.nvdiffrast import MeshRenderer
 
 '''从pkl文件中生成视频'''
 # with open('data/001.pkl','rb') as f:
@@ -81,96 +82,20 @@ from src.util.data_process.audio_config_pc_avs import AudioConfig
 # cmd='ffmpeg -i temp2/%4d.png -c:v libx265 -pix_fmt yuv420p -preset ultrafast -x265-params lossless=1 -y temp.mp4'
 
 
-audio_process=AudioConfig(num_frames_per_clip=5,hop_size=160)
-
-def format_data(file):
-    with open(file,'rb') as f:
-        byte_file=f.read()
-    byte_file=zlib.decompress(byte_file)
-    data= pickle.loads(byte_file)
-    video_file=data['path']
-    
-    # fps指定帧数，保证音频片段和视频片段同步
-    audio_file=video_file.replace('.mp4','.wav')
-    my_audio_clip = AudioFileClip(video_file)
-    my_audio_clip.write_audiofile(audio_file,fps=16000)
-
-    
-    '''将音频转为MFCC'''
-    speech, samplerate = sf.read(audio_file)
-    # 16kHz对应25帧的换算方式
-    fps=samplerate*25/16000
-    if len(speech.shape)==2:
-        speech=speech[:,0]
-    speech = np.insert(speech, 0, np.zeros(1920))
-    speech = np.append(speech, np.zeros(1920))
-    mfcc = python_speech_features.mfcc(speech,samplerate,winstep=1/(fps*4))
-
-    ind = 3
-    input_mfcc = []
-    while ind <= int(mfcc.shape[0]/4) - 4:
-        t_mfcc =mfcc[( ind - 3)*4: (ind + 4)*4]
-        input_mfcc.append(t_mfcc)
-        ind += 1
-    input_mfcc=np.array(input_mfcc)
-
-    
-    print('进程{}处理{}，裁剪了{}'.format(os.getpid(),file,len(data['face_video'])-len(input_mfcc)))
-    if len(input_mfcc)>=len(data['face_video']):
-        input_mfcc=input_mfcc[:len(data['face_video'])]
-    else:
-        temp_last=torch.tensor(input_mfcc[-1]).expand(len(data['face_video'])-len(input_mfcc),-1,-1)
-        input_mfcc=np.concatenate((input_mfcc,temp_last.numpy()))
-
-    assert len(data['face_video'])==len(input_mfcc)
-
-    data['audio_mfcc']=np.array(input_mfcc)
-    # 存入新文件
-    new_file=file.replace('data_mead2','data_mead3')
-    os.makedirs(os.path.dirname(new_file),exist_ok=True)
-    data = pickle.dumps(data)
-    data=zlib.compress(data)
-    with open(new_file,'wb') as f:
-        f.write(data)
-    
-    # 删除音频文件
-    os.remove(audio_file)
-
-
 '''往data中加入path'''
 if __name__=='__main__':
     set_start_method('spawn')
-    pkl_list=sorted(glob.glob(f'data_mead/format_data/test/*/*.pkl'))
-    for pkl_file in tqdm(pkl_list):
-        with open(pkl_file,'rb') as f:
-            byte_file=f.read()
-        byte_file=zlib.decompress(byte_file)
-        data= pickle.loads(byte_file)
+    # 重新生成data_mix
+    mead_pkl_list=glob.glob('data_mead/format_data/eval/*/*.pkl')
+    random.shuffle(mead_pkl_list)
+    vox_pkl_list=glob.glob('data_vox/format_data/eval/*/*.pkl')
+    random.shuffle(vox_pkl_list)
 
-        face_video=data['face_video']
-        imageio.mimsave(f'adaas.mp4',face_video,fps=25)
+    mix_pkl_list=mead_pkl_list[:len(mead_pkl_list)//2]+vox_pkl_list[:len(vox_pkl_list)//2]
+    for pkl_file in tqdm(mix_pkl_list):
+        os.makedirs(os.path.dirname(pkl_file.replace('data_vox','data_mix').replace('data_mead','data_mix')),
+                    exist_ok=True)
+        shutil.copyfile(pkl_file,pkl_file.replace('data_vox','data_mix').replace('data_mead','data_mix'))
 
-        video_file=data['path']
-        cmd ='ffmpeg -i {} -i {} -loglevel error -c copy -map 0:0 -map 1:1 -y -shortest {}'.format(
-            f'adaas.mp4',video_file,f'temp/{os.path.basename(pkl_file)[:-4]}.mp4') 
-        os.system(cmd)
-    os.remove('adaas.mp4')
-
-    # 重新处理音频，生成data_vox2
-    file_list=glob.glob('data_mead/format_data/test/*/*.pkl')
-    random.shuffle(file_list)
-    file_list=file_list[:50]
-    temp=[]
-    for file in file_list:
-        temp.append(os.path.abspath(file))
-    np.save('test_dataset.npy',temp)
 
     
-
-
-
-
-
-
-
-

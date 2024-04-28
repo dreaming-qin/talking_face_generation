@@ -257,11 +257,11 @@ if __name__=='__main__':
             break
     dir_list=dir_list[index:]
 
-    # # test
-    # dir_list=['data_mead']
-    # for file_list in dir_list:
-    #     # format_data(file_list)
-    #     merge_data(file_list)
+    # test
+    dir_list=['data_mead']
+    for file_list in dir_list:
+        format_data(file_list)
+        merge_data(file_list)
 
     
     # workers=3
@@ -276,6 +276,6 @@ if __name__=='__main__':
     #     None
     # pool.close()
 
-    move_data(config)
+    # move_data(config)
 
 

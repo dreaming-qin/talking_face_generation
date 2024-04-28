@@ -5,7 +5,7 @@ import glob
 import zlib
 import pickle
 import numpy as np
-
+import random
 
 # test
 if __name__=='__main__':
@@ -72,6 +72,7 @@ def generate_video(config):
 
         data=to_device(data,device,config)
 
+        # # test 测试视频
         # import imageio
         # imageio.mimsave('test.mp4',data['video'][0].cpu().numpy())
 
@@ -186,12 +187,22 @@ if __name__ == '__main__':
     # 设置生成的视频数量最大值
     config['video_num']=50
 
+    # # test test_dataset.npy获得
+    # file_list=sorted(glob.glob('{}/test/*/*.pkl'.format('data_lrs3/format_data')))
+    # random.shuffle(file_list)
+    # temp=[]
+    # for file in file_list[:config['video_num']]:
+    #     temp.append(os.path.abspath(file))
+    # np.save('test_dataset_lrs3.npy',np.array(temp))
+    
+
     # generate_video(config)
     # get_metrices(config)
 
 
     # test，获得其它方法的结果
-    method=['atvg']
+    # method=['atvg','eamm','make_it_talk','pc_avs','wav2lip']
+    method=['make_it_talk']
     for b in method:
         config['result_dir']=f'result/{b}'
         get_metrices(config)

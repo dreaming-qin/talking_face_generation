@@ -32,59 +32,21 @@ class RenderDataset(torch.utils.data.Dataset):
         self.frame_num=frame_num
         self.type=type
 
-        
-        self.format_path=format_path
-        self.img_dict={}
-        if 'mead' in format_path:
-            for file in self.filenames:
-                name,_,emo,_,_,video_num=os.path.basename(file)[:-4].split('_')
-                if 'neutral' == emo:
-                    if not f'{name}_{emo}' in self.img_dict:
-                        self.img_dict[f'{name}_{emo}' ]={}
-                    if not f'{video_num}' in self.img_dict[f'{name}_{emo}']:
-                        self.img_dict[f'{name}_{emo}'][f'{video_num}' ]=[]
-                    self.img_dict[f'{name}_{emo}'][f'{video_num}' ].append(file)
-
     def __len__(self):
         return len(self.filenames)
-
-    def get_src_data(self,data,file):
-        r'''为了防止render学不到情感信息 ，参考图片不用同一个视频中的
-        data是驱动源对应的数据，有可能直接作为src_data返回
-        file是驱动源对应的文件名称'''
-        if 'mead' in self.format_path:
-            # 对mead的参考图片，使用中性视频中的图片表示
-            if 'train'==self.type:
-                name,_,_,_,_,video_num=os.path.basename(file)[:-4].split('_')
-                if f'{video_num}' not in self.img_dict[f'{name}_neutral']:
-                    src_key=random.sample(self.img_dict[f'{name}_neutral'].keys(),1)[0]
-                    src_file=self.img_dict[f'{name}_neutral'][src_key][0]
-                else:
-                    src_file=self.img_dict[f'{name}_neutral'][f'{video_num}'][0]
-                with open(src_file,'rb') as f:
-                    byte_file=f.read()
-                byte_file=zlib.decompress(byte_file)
-                src_data= pickle.loads(byte_file)
-            else:
-                # 对验证集和测试集，参考图片直接取自己
-                src_data=data
-        elif 'vox' in self.format_path:
-            # 对vox，主要目的是验证姿势控制，直接返还自身
-            src_data=data
-        return src_data
 
     def __getitem__(self, idx):
         file=self.filenames[idx]
         # 解压pkl文件
         with open(file,'rb') as f:
+            # data= pickle.load(f)
             byte_file=f.read()
         byte_file=zlib.decompress(byte_file)
         data= pickle.loads(byte_file)
         out={}
 
-        src_data=self.get_src_data(data,file)
         # 下列的self.process方法中，需要根据frame_index拿出合法数据
-        video_data,data['frame_index']=self.process_video(data,src_data)
+        video_data,data['frame_index']=self.process_video(data)
         # [frame num,H,W,3]
         src=(video_data[0]/255*2)-1
         # [frame num,H,W,3]
@@ -107,10 +69,14 @@ class RenderDataset(torch.utils.data.Dataset):
 
         return out
 
-    def process_video(self,data,src_data):
+    def process_video(self,data):
         r'''返回(src,target),frame_index这样的数据'''
         video_data=data['face_video']
-        src_video_data=src_data['face_video']
+        if 'fake_face_video' in data:
+            src_video_data=data['fake_face_video']
+        else:
+            src_video_data=data['face_video']
+
 
         # 由于要生成序列性的视频，需要取一段连续的序列
         # 从video中随机选择frame_num张帧

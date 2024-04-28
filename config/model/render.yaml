@@ -32,15 +32,15 @@ device_id: [1]
 # epoch
 epoch: 1000000
 # 在epoch的前warp_epoch中，会先不训练edit，然后会共同训练
-warp_epoch: 10
+warp_epoch: 5
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [15]
+lr_scheduler_step: [10]
 # render_win_size需要不小于12
 render_win_size: 13
 
 # 相关文件夹
-render_pre_train: "checkpoint/render/未加强情感控制/edit_epoch_23_metrices_0.9345089584052061.pth"
-checkpoint_dir: "checkpoint/render/vox"
-result_dir: "result/render/vox"
+render_pre_train: "checkpoint/render/mix版本的/edit_epoch_52_metrices_0.8339658537363165.pth"
+checkpoint_dir: "checkpoint/render"
+result_dir: "result/render"
 

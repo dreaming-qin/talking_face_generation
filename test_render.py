@@ -196,8 +196,8 @@ if __name__ == '__main__':
     # 由于GPU限制，得10张10张的往GPU送
     config['frame_num']=10
     # 设置生成的视频数量最大值
-    config['video_num']=50
+    config['video_num']=500
 
 
     generate_video(config)
-    get_metrices(config)
+    # get_metrices(config)

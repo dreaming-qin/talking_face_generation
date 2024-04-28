@@ -5,8 +5,7 @@ import imageio
 from imutils import face_utils
 import os
 import glob
-import matplotlib.pyplot as plt
-
+import math
 
 '''M-LMD取值范围[0,正无穷]，越小越好'''
 
@@ -59,6 +58,8 @@ def M_LMD(predict_video,gt_video):
         dis = np.sum(dis,axis=1)
         dis = np.sqrt(dis)
         dis = np.sum(dis,axis=0)
+        if math.isnan(dis):
+            continue
         distance.append(dis/len(fake_mouth_land))
 
     if len(distance)==0:

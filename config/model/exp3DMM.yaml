@@ -61,4 +61,4 @@ lr: 0.0001
 lr_scheduler_step: [5]
 
 exp_3dmm_pre_train: "checkpoint/exp3DMM/epoch_31_metrices_0.9224964247748313.pth"
-render_pre_train: "checkpoint/render/edit_epoch_23_metrices_0.9345089584052061.pth"
+render_pre_train: "checkpoint/render/未加强情感控制/edit_epoch_23_metrices_0.9345089584052061.pth"

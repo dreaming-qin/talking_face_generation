@@ -117,7 +117,7 @@ def get_face_image(driving_video,dataset_name):
                 right=min(max(right,rects[-1].right()+round(0.0781*image_width)),video_array.shape[2])
             if i==10:
                 break
-        elif dataset_name == 'vox':
+        elif dataset_name == 'vox' or dataset_name=='lrs3':
             top=image_height
             bottom=0
             left=0
@@ -134,7 +134,7 @@ def get_face_image(driving_video,dataset_name):
         for pic in video_array:
             temp_video_array.append(pic[top:bottom,left:right])
         video_array=np.array(temp_video_array)
-    elif dataset_name == 'vox':
+    elif dataset_name == 'vox' or dataset_name=='lrs3':
         pass
     # resize图片
     video_array = [cv2.resize(frame, (256, 256)) for frame in video_array]
