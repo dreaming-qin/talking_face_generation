@@ -11,7 +11,7 @@ warpping_net:
 editing_net:
   base_nc: 64
   # test，原来值为3
-  layer: 6
+  layer: 3
   num_res_blocks: 2
 
 common:
@@ -22,26 +22,26 @@ common:
 
 # loss函数用的
 # rec_weight中，第一项是L1 loss，第二项是ssim
-rec_low_weight: [60,0]
+rec_low_weight: [20,0]
 vgg_weight: [1,1,1,1,1]
 num_scales: 4
 resize_mode: "bilinear"
 
 
 # 训练用的
-device_id: [0]
+device_id: [1]
 # epoch
-epoch: 1000000
+epoch: 1
 # 在epoch的前warp_epoch中，会先不训练edit，然后会共同训练
 warp_epoch: 2
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [10]
+lr_scheduler_step: [20]
 # render_win_size需要不小于12
 render_win_size: 13
 
 # 相关文件夹
-render_pre_train: "checkpoint/render/edit_epoch_85_metrices_0.8316281699529972.pth"
+# render_pre_train: "checkpoint/render/edit_epoch_85_metrices_0.8316281699529972.pth"
 checkpoint_dir: "checkpoint/render"
 result_dir: "result/render"
 

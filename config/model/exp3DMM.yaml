@@ -60,5 +60,5 @@ lr: 0.0001
 # 在lr_scheduler_step后改变学习率
 lr_scheduler_step: [7]
 
-exp_3dmm_pre_train: "checkpoint/exp3DMM/mix/没加img_loss的/epoch_8_metrices_0.8166522012642805.pth"
+exp_3dmm_pre_train: "checkpoint/exp3DMM/mix/加了img_loss的/epoch_8_metrices_0.8177241628598383.pth"
 render_pre_train: "checkpoint/render/mix/加强情感控制/edit_epoch_27_metrices_0.8273365222346019.pth"

@@ -60,7 +60,7 @@ def generate_video(config):
 
     # 拿数据
     # file_list=sorted(glob.glob('{}/test/*/*.pkl'.format(config['format_output_path'])))
-    file_list=np.load('test_dataset_lrs3.npy')
+    file_list=np.load('test_dataset_improv.npy')
     file_list=np.array(file_list)[:config['video_num']].tolist()
     print('生成视频中...')
     for file in tqdm(file_list):
