@@ -60,7 +60,7 @@ def generate_video(config):
 
     # 拿数据
     # file_list=sorted(glob.glob('{}/test/*/*.pkl'.format(config['format_output_path'])))
-    file_list=np.load('test_dataset.npy')
+    file_list=np.load('test_dataset_lrs3.npy')
     file_list=np.array(file_list)[:config['video_num']].tolist()
     print('生成视频中...')
     for file in tqdm(file_list):
@@ -163,10 +163,10 @@ def to_device(data,device,config):
     ans['path']=data['path']
     ans['real_video']=ans['real_video'].squeeze(0)
 
-    # test，拿出表情3DMM
-    data_3DMM=data['face_coeff']['coeff']
-    face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
-    ans['face3d_exp']=face3d_exp
+    # # test，拿出表情3DMM
+    # data_3DMM=data['face_coeff']['coeff']
+    # face3d_exp = data_3DMM[:, 80:144]  # expression 3DMM range
+    # ans['face3d_exp']=face3d_exp
 
     return ans
 
@@ -196,13 +196,13 @@ if __name__ == '__main__':
     # np.save('test_dataset_lrs3.npy',np.array(temp))
     
 
-    # generate_video(config)
-    # get_metrices(config)
+    generate_video(config)
+    get_metrices(config)
 
 
     # test，获得其它方法的结果
     # method=['atvg','eamm','make_it_talk','pc_avs','wav2lip']
-    method=['make_it_talk']
-    for b in method:
-        config['result_dir']=f'result/{b}'
-        get_metrices(config)
+    # method=['make_it_talk']
+    # for b in method:
+    #     config['result_dir']=f'result/{b}'
+    #     get_metrices(config)

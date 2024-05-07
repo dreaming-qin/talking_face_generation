@@ -10,7 +10,8 @@ warpping_net:
 
 editing_net:
   base_nc: 64
-  layer: 3
+  # test，原来值为3
+  layer: 6
   num_res_blocks: 2
 
 common:
@@ -28,11 +29,11 @@ resize_mode: "bilinear"
 
 
 # 训练用的
-device_id: [1]
+device_id: [0]
 # epoch
 epoch: 1000000
 # 在epoch的前warp_epoch中，会先不训练edit，然后会共同训练
-warp_epoch: 5
+warp_epoch: 2
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
 lr_scheduler_step: [10]
@@ -40,7 +41,7 @@ lr_scheduler_step: [10]
 render_win_size: 13
 
 # 相关文件夹
-render_pre_train: "checkpoint/render/mix版本的/edit_epoch_52_metrices_0.8339658537363165.pth"
+render_pre_train: "checkpoint/render/edit_epoch_85_metrices_0.8316281699529972.pth"
 checkpoint_dir: "checkpoint/render"
 result_dir: "result/render"
 

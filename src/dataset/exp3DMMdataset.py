@@ -43,17 +43,6 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         self.mask_height=config['mask_height']
 
 
-        self.format_path=format_path
-        self.img_dict={}
-        if 'mead' in format_path:
-            for file in self.filenames:
-                name,_,emo,_,_,video_num=os.path.basename(file)[:-4].split('_')
-                if 'neutral' == emo:
-                    if not f'{name}_{emo}' in self.img_dict:
-                        self.img_dict[f'{name}_{emo}' ]={}
-                    if not f'{video_num}' in self.img_dict[f'{name}_{emo}']:
-                        self.img_dict[f'{name}_{emo}'][f'{video_num}' ]=[]
-                    self.img_dict[f'{name}_{emo}'][f'{video_num}' ].append(file)
 
     def __len__(self):
         return len(self.filenames)
@@ -72,21 +61,9 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         data= pickle.loads(byte_file)
         out={}
 
-        # 对参考图片，使用中性视频中的图片表示
-        if 'mead' in self.format_path:
-            name,_,_,_,_,video_num=os.path.basename(file)[:-4].split('_')
-            if f'{video_num}' not in self.img_dict[f'{name}_neutral']:
-                src_key=random.sample(self.img_dict[f'{name}_neutral'].keys(),1)[0]
-                src_file=self.img_dict[f'{name}_neutral'][src_key][0]
-            else:
-                src_file=self.img_dict[f'{name}_neutral'][f'{video_num}'][0]
-            with open(src_file,'rb') as f:
-                byte_file=f.read()
-            byte_file=zlib.decompress(byte_file)
-            src_data= pickle.loads(byte_file)
 
         # 下列的self.process方法中，需要根据frame_index拿出合法数据
-        video_data,img,data['frame_index']=self.process_video(data,src_data)
+        video_data,img,data['frame_index']=self.process_video(data)
         video_data=(video_data/255*2)-1
         #[frame ,3,H,W]
         out[f'{type}gt_video']=torch.tensor(video_data).float().permute(0,3,1,2)
@@ -146,9 +123,12 @@ class Exp3DMMdataset(torch.utils.data.Dataset):
         return np.array(mask_video)
 
 
-    def process_video(self,data,src_data):
+    def process_video(self,data):
         video_data=data['face_video']
-        src_video_data=src_data['face_video']
+        if 'fake_face_video' in data:
+            src_video_data=data['fake_face_video']
+        else:
+            src_video_data=data['face_video']
 
         temp_index=random.sample(range(len(video_data)),self.frame_num)
         src_temp_index=random.sample(range(len(src_video_data)),self.frame_num)

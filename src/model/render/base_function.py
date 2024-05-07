@@ -339,6 +339,7 @@ class FineADAINResBlock2d(nn.Module):
 
 
     def forward(self, x, z):
+        # 有问题
         dx = self.actvn(self.norm1(self.conv1(x), z))
         dx = self.norm2(self.conv2(x), z)
         out = dx + x

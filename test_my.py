@@ -85,17 +85,14 @@ from Deep3DFaceRecon_pytorch.util.nvdiffrast import MeshRenderer
 '''往data中加入path'''
 if __name__=='__main__':
     set_start_method('spawn')
-    # 重新生成data_mix
-    mead_pkl_list=glob.glob('data_mead/format_data/eval/*/*.pkl')
-    random.shuffle(mead_pkl_list)
-    vox_pkl_list=glob.glob('data_vox/format_data/eval/*/*.pkl')
-    random.shuffle(vox_pkl_list)
 
-    mix_pkl_list=mead_pkl_list[:len(mead_pkl_list)//2]+vox_pkl_list[:len(vox_pkl_list)//2]
-    for pkl_file in tqdm(mix_pkl_list):
-        os.makedirs(os.path.dirname(pkl_file.replace('data_vox','data_mix').replace('data_mead','data_mix')),
-                    exist_ok=True)
-        shutil.copyfile(pkl_file,pkl_file.replace('data_vox','data_mix').replace('data_mead','data_mix'))
+    device=torch.device('cuda')
+    model=nn.Conv2d(3,3,(3,3)).to(device)
+    x=torch.rand((1,3,6,6)).to(device)
 
+    out=model(x)
+    # out=F.interpolate(out, scale_factor=2)
+    loss=out.mean()
+    loss.backward()
 
-    
+    a=1

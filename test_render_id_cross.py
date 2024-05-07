@@ -171,6 +171,11 @@ if __name__ == '__main__':
     config['video_num']=100
 
     # 当前的输入文件为了省事，是面向已经处理好的pkl文件
+    # src_M007_front_happy_level_2_007_tgt_M003_front_angry_level_3_025
+    # src_M022_front_neutral_level_1_022_tgt_M003_front_angry_level_3_025
+    # src_M022_front_neutral_level_1_022_tgt_M005_front_angry_level_3_019
+    # src_M022_front_neutral_level_1_022_tgt_M005_front_surprised_level_3_003
+
     # config['src_file']='data_mead/format_data/test/0/M007_front_happy_level_2_007.pkl'
     config['src_file']='data_mead/format_data/test/0/M022_front_neutral_level_1_022.pkl'
     config['target_file']='data_mead/format_data/test/0/M005_front_surprised_level_3_003.pkl'

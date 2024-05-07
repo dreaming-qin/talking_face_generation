@@ -138,10 +138,10 @@ def run(config):
     train_dataset=Exp3DMMdataset(config,type='train',frame_num=1)
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=7, 
+        batch_size=9, 
         shuffle=True,
         drop_last=False,
-        num_workers=6,
+        num_workers=9,
         collate_fn=train_dataset.collater
     )
     # 验证集
@@ -217,8 +217,9 @@ def run(config):
             # imageio.mimsave('test.mp4',data['video'][0].cpu().numpy())
 
             exp_result=exp_model(data['video'].permute(0,1,4,2,3),data['audio'])
-            drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
-            imgs = render(data['img'],drving_src )['fake_image']
+            # drving_src=torch.cat((exp_result,data['pose']),dim=2).permute(0,2,1)
+            # imgs = render(data['img'],drving_src )['fake_image']
+            imgs=None
 
             # 计算loss
             loss=loss_function(exp_result,imgs,data)

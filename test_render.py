@@ -116,6 +116,7 @@ def generate_video(config):
 
         # 送入render
         fake_video=[]
+        warp_video=[]
         # 由于GPU限制，10张10张送
         frame_num=config['frame_num']
         i=-frame_num
@@ -123,9 +124,12 @@ def generate_video(config):
             output_dict = render(input_img[i:i+frame_num], driving_src[i:i+frame_num])
             # 得到结果(B,3,H,W)
             fake_video.append(output_dict['fake_image'])
+            warp_video.append(output_dict['warp_image'])
         output_dict = render(input_img[i+frame_num:], driving_src[i+frame_num:])
         fake_video.append(output_dict['fake_image'])
+        warp_video.append(output_dict['warp_image'])
         fake_video=torch.cat(fake_video)
+        warp_video=torch.cat(warp_video)
 
         real_save_file='{}/result/real/{}'.format(config['result_dir'],os.path.basename(file).replace('.pkl','.mp4'))
         real_video=data['face_video']
@@ -137,7 +141,8 @@ def generate_video(config):
 
         
         save_file='{}/result/merge/{}'.format(config['result_dir'],os.path.basename(file).replace('.pkl','.mp4'))
-        video=torch.cat((real_video,fake_video),dim=2)
+        warp_video=warp_video.permute(0,2,3,1)
+        video=torch.cat((real_video,warp_video,fake_video),dim=2)
         save_video(video,data,save_file)
 
 def get_drving(data,win_size):

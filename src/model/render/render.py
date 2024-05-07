@@ -178,8 +178,6 @@ if __name__=='__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-    exp_3dmm=Exp3DMM(config)
-    exp_3dmm=exp_3dmm.to(device)
 
     render=Render(
         config['mapping_net'],
@@ -189,34 +187,13 @@ if __name__=='__main__':
     render=render.to(device)
     with torch.no_grad():
         for data in dataloader:
+            # 把数据放到device中
             for key,value in data.items():
                 data[key]=value.to(device)
-            aaa=data['video_input']
-            transformer_video=aaa.permute(0,1,4,2,3)
-            result_exp=exp_3dmm(transformer_video,data['audio_input'])
-
-            # 数据处理
-            # [B,len,73]
-            driving_source=torch.cat((result_exp,data['pose']),dim=-1)
-            # [B,len,win size,73]
-            driving_source=get_window(driving_source,config['win_size'])
-            driving_source=driving_source.permute(0,1,3,2)
             
-            input_image=[]
-            for img in data['img']:
-                # [3,H,W]
-                tmp_img=img.permute(2,0,1)
-                # [len,3,H,W]
-                tmp_img=tmp_img.expand(driving_source.shape[1],  -1, -1, -1)
-                input_image.append(tmp_img)
-            # [B,len,3,H,W]
-            input_image=torch.stack(input_image)
-
-            output_imgs=[]
-            for drving,img in zip(driving_source,input_image):
-                output_dict = render(img, drving)
-                output_imgs.append(output_dict['fake_image'])
-            output_imgs=torch.stack(output_imgs)
-
-            a=1
-
+            # [B,73,win size]
+            driving_source=data['driving_src']
+            # [B,3,H,W]
+            input_image=data['src']
+            # [B,3,H,W]
+            output_dict = render(input_image, driving_source)
