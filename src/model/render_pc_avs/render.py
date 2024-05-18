@@ -571,10 +571,13 @@ class StyleGAN2Generator(BaseNetwork):
     ):
         '''
         imput_img (B,3,256,256)
-        styles驱动信息 列表中含有tensor (B, 2560) 
+        styles驱动信息 列表中含有tensor (B, 73,27) 
         输出图片，大小是 (B,3,256,256)
         ''' 
         styles=[self.mapping_net(styles).squeeze(-1)]
+        # styles=[styles.reshape(len(styles),-1)]
+        # test
+        # styles=[torch.rand_like(styles[0])]
         img_feature=self.image_encoder(input_img)
         identity_style=img_feature
 

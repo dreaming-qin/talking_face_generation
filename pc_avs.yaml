@@ -119,3 +119,8 @@ verbose: false
 vgg_face: false
 which_epoch: latest
 word_loss: false
+
+# 判别器
+num_D: 2
+netD_subarch: n_layer
+n_layers_D: 4
