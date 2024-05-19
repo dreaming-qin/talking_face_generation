@@ -174,7 +174,7 @@ def run(config):
         render.load_state_dict(state_dict,strict=False)
 
     # 验证
-    save_result(render,test_dataloader,os.path.join(config['result_dir'],'epoch_-1_warp'),save_video_num=3)
+    save_result(render,test_dataloader,os.path.join(config['result_dir'],'epoch_-1_warp'),save_video_num=10)
 
     # loss
     loss_function=RenderLoss(config)
@@ -215,7 +215,6 @@ def run(config):
             # 反向传播
             optimizer.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(render.parameters(), 0.5)
             optimizer.step()
 
         train_logger.info(f'第{epoch}次迭代获得的loss值为{epoch_loss}')
@@ -225,7 +224,7 @@ def run(config):
         test_logger.info(f'第{epoch}次迭代后，验证集的指标值为{eval_metrices}')
         if eval_metrices>metrices[stage]:
             save_path=os.path.join(config['result_dir'],'epoch_{}_{}'.format(epoch,stage))
-            save_result(render,eval_dataloader,save_path,save_video_num=3)
+            save_result(render,eval_dataloader,save_path,save_video_num=10)
             pth_path= os.path.join(config['checkpoint_dir'],f'{stage}_epoch_{epoch}_metrices_{eval_metrices}.pth')
             torch.save(render.state_dict(),pth_path)
             metrices[stage]=eval_metrices
@@ -236,7 +235,7 @@ def run(config):
     test_metrices=eval(render,test_dataloader,checkpoint=best_checkpoint,stage='edit')
     test_logger.info(f'测试结果为{test_metrices}')
     save_path=os.path.join(config['result_dir'],'test')
-    save_result(render,test_dataloader,save_path,save_video_num=3)
+    save_result(render,test_dataloader,save_path,save_video_num=10)
 
 
 if __name__ == '__main__':

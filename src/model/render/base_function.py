@@ -225,19 +225,25 @@ class FineDecoder(nn.Module):
             setattr(self, 'res' + str(i), res)            
             setattr(self, 'jump' + str(i), jump)
 
-        self.final = FinalBlock2d(out_channels, image_nc, use_spect, 'tanh')
+        self.final = nn.Sequential(
+            FinalBlock2d(2*out_channels, out_channels, use_spect, 'tanh'),
+            nn.InstanceNorm2d(out_channels, affine=False),
+            FinalBlock2d(out_channels, image_nc, use_spect, 'tanh'),
+            )
 
         self.output_nc = out_channels
 
     def forward(self, x, z):
         out = x.pop()
+        out=torch.cat((out,out),dim=1)
         for i in range(self.layers)[::-1]:
             res_model = getattr(self, 'res' + str(i))
             up_model = getattr(self, 'up' + str(i))
             jump_model = getattr(self, 'jump' + str(i))
             out = res_model(out, z)
             out = up_model(out)
-            out = jump_model(x.pop()) + out
+            # out = jump_model(x.pop()) + out
+            out=torch.cat((jump_model(x.pop()),out),dim=1)
         out_image = self.final(out)
         return out_image
 
@@ -297,7 +303,8 @@ class FineADAINResBlocks(nn.Module):
         super(FineADAINResBlocks, self).__init__()                                
         self.num_block = num_block
         for i in range(num_block):
-            model = FineADAINResBlock2d(input_nc, feature_nc, norm_layer, nonlinearity, use_spect)
+            model = FineADAINResBlock2d(input_nc*(num_block-i),feature_nc, norm_layer, nonlinearity, use_spect,
+                    is_down_sample=True if i!=num_block-1 else False)
             setattr(self, 'res'+str(i), model)
 
     def forward(self, x, z):
@@ -325,24 +332,36 @@ class FineADAINResBlock2d(nn.Module):
     """
     Define an Residual block for different types
     """
-    def __init__(self, input_nc, feature_nc, norm_layer=nn.BatchNorm2d, nonlinearity=nn.LeakyReLU(), use_spect=False):
+    def __init__(self, input_nc,feature_nc, norm_layer=nn.BatchNorm2d, nonlinearity=nn.LeakyReLU(), 
+                use_spect=False,is_down_sample=False):
         super(FineADAINResBlock2d, self).__init__()
 
         kwargs = {'kernel_size': 3, 'stride': 1, 'padding': 1}
 
         self.conv1 = spectral_norm(nn.Conv2d(input_nc, input_nc, **kwargs), use_spect)
-        self.conv2 = spectral_norm(nn.Conv2d(input_nc, input_nc, **kwargs), use_spect)
+        if is_down_sample:
+            self.conv2 = spectral_norm(nn.Conv2d(input_nc, input_nc//2, **kwargs), use_spect)
+        else:
+            self.conv2 = spectral_norm(nn.Conv2d(input_nc, input_nc, **kwargs), use_spect)
+
         self.norm1 = ADAIN(input_nc, feature_nc)
-        self.norm2 = ADAIN(input_nc, feature_nc)
+        if is_down_sample:
+            self.norm2 = ADAIN(input_nc//2, feature_nc)
+        else:
+            self.norm2 = ADAIN(input_nc, feature_nc)
+        self.is_down_sample=is_down_sample
 
         self.actvn = nonlinearity
 
 
     def forward(self, x, z):
-        # 有问题
         dx = self.actvn(self.norm1(self.conv1(x), z))
-        dx = self.norm2(self.conv2(x), z)
-        out = dx + x
+        if self.is_down_sample:
+            dx = dx + x
+            out = self.norm2(self.conv2(dx), z)
+        else:
+            dx = self.norm2(self.conv2(dx), z)
+            out = dx + x
         return out        
 
 class FinalBlock2d(nn.Module):

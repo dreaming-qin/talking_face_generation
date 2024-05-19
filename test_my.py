@@ -22,6 +22,7 @@ import scipy.io.wavfile as wave
 from moviepy.editor import AudioFileClip
 import torch.nn.functional as F
 from scipy.io import loadmat
+import matplotlib.pyplot as plt
 from PIL import Image
 try:
     from PIL.Image import Resampling
@@ -84,15 +85,27 @@ from Deep3DFaceRecon_pytorch.util.nvdiffrast import MeshRenderer
 
 '''往data中加入path'''
 if __name__=='__main__':
-    set_start_method('spawn')
+    # 读取并展示原始图像
+    image = plt.imread("temp.png")  # 替换为你的图像文件路
 
-    device=torch.device('cuda')
-    model=nn.Conv2d(3,3,(3,3)).to(device)
-    x=torch.rand((1,3,6,6)).to(device)
+    # 将图像转换为PyTorch张量
+    tensor_image = torch.tensor(image).permute(2, 0, 1).unsqueeze(0).float()  # 转换为CHW格式的张量
 
-    out=model(x)
-    # out=F.interpolate(out, scale_factor=2)
-    loss=out.mean()
-    loss.backward()
+    # 创建一个水平翻转的变换矩阵
+    theta = torch.tensor([[[-1, 0, 0], [0, 1, 0]]], dtype=torch.float)  # 水平翻转矩阵
 
-    a=1
+
+    # 获得defomation
+    moban=torch.tensor([i*(2/255)+-1 for i in range(256)])
+    zero=moban.reshape(1,256).expand(256,256)
+    one=moban.reshape(256,1).expand(256,256)
+    defomation=torch.stack((zero,one),dim=2).unsqueeze(0)
+
+
+    # 对图像进行水平翻转
+    transformed_image = F.grid_sample(tensor_image,defomation)
+
+    # 将张量图像转换回NumPy数组并展示
+    transformed_image = transformed_image.squeeze().permute(1, 2, 0).numpy()
+    imageio.imsave('temp2.png',(transformed_image*255).astype(np.uint8))
+    
