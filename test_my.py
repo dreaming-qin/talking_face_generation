@@ -85,17 +85,12 @@ from Deep3DFaceRecon_pytorch.util.nvdiffrast import MeshRenderer
 
 '''往data中加入path'''
 if __name__=='__main__':
+    # 只保留中性表情和其它表情的plus版本
+    mp4_list=sorted(glob.glob('/workspace/dataset/RAVDESS/mp4/*level02*.mp4'))+ \
+        sorted(glob.glob('/workspace/dataset/RAVDESS/mp4/*neutral*.mp4'))
+    print('删除没有音频和视频的MP4')
+    for mp4_file in tqdm(mp4_list):
+        shutil.copy(mp4_file,'/workspace/dataset/RAVDESS/test_mp4')
     
-    latent=torch.rand((2,2,64,64))*255
-
-    model=nn.InstanceNorm2d(2)
-    out2=model(latent)
-
-    latent=latent.reshape(latent.shape[0],latent.shape[1],-1)
-    gamma=torch.var(latent,dim=2).unsqueeze(2).unsqueeze(3)
-    beta=torch.mean(latent,dim=2).unsqueeze(2).unsqueeze(3)
-    out=(latent-beta)/torch.sqrt(gamma)
-
-    print(out.shape)
-
-    a=1
+        
+    
