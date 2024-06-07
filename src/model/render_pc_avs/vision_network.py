@@ -6,7 +6,7 @@ if __name__=='__main__':
 
 import torch.nn as nn
 import torch.nn.functional as F
-from src.model.render2.base_network import BaseNetwork
+from src.model.render_pc_avs.base_network import BaseNetwork
 from torchvision.models.resnet import ResNet, Bottleneck
 import torch
 

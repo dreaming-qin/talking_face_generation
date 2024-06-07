@@ -28,5 +28,5 @@ lr: 0.0001
 
 
 # 相关文件夹
-sync_net_pre_train: "checkpoint/syncNet/epoch_18_metrices_0.6473926901817322.pth"
+sync_net_pre_train: "checkpoint/render/edit_epoch_2_metrices_0.6777374626393513.pth"
 checkpoint_dir: "checkpoint/syncNet"

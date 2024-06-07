@@ -114,26 +114,12 @@ class WarpingNet(nn.Module):
 
         self.pool = nn.AdaptiveAvgPool2d(1)
 
-        # test
-        # self.deformation_template=None
-
     def forward(self, input_image, descriptor):
-
         final_output={}
         output = self.hourglass(input_image, descriptor)
         final_output['flow_field'] = self.flow_out(output)
+
         deformation = flow_util.convert_flow_to_deformation(final_output['flow_field'])
-
-        # # test 初始化deformation_template
-        # if self.deformation_template is None:
-        #     _, height, width, _ = deformation.shape
-        #     w_deformation=torch.tensor([i*2/(width-1)-1 for i in range(width)])
-        #     h_deformation=torch.tensor([i*2/(height-1)-1 for i in range(height)])
-        #     zero=w_deformation.reshape(1,width).expand(height,width)
-        #     one=h_deformation.reshape(height,1).expand(height,width)
-        #     self.deformation_template=torch.stack((zero,one),dim=2).unsqueeze(0).to(input_image)
-        # deformation+=self.deformation_template
-
         final_output['warp_image'] = flow_util.warp_image(input_image, deformation)
         return final_output
 
@@ -183,14 +169,14 @@ if __name__=='__main__':
     dataset=RenderDataset(config)
     dataloader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=1, 
+        batch_size=3, 
         shuffle=True,
         drop_last=False,
         num_workers=0,
         collate_fn=dataset.collater
     )
-    # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-    device = torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 
     render=Render(
@@ -199,13 +185,6 @@ if __name__=='__main__':
         config['editing_net'],
         config['common'])
     render=render.to(device)
-    # if 'render_pre_train' in config:
-    #     state_dict=torch.load(config['render_pre_train'],map_location=torch.device('cpu'))
-    #     aaa={}
-    #     for key,val in state_dict.items():
-    #         aaa[key.replace('module.','')]=val
-    #     # render.load_state_dict(aaa,strict=False)
-
     with torch.no_grad():
         for data in dataloader:
             # 把数据放到device中

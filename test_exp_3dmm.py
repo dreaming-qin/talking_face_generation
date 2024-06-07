@@ -196,8 +196,8 @@ if __name__ == '__main__':
     # np.save('test_dataset_lrs3.npy',np.array(temp))
     
 
-    generate_video(config)
-    get_metrices(config)
+    # generate_video(config)
+    # get_metrices(config)
 
 
     # test，获得其它方法的结果
@@ -206,3 +206,6 @@ if __name__ == '__main__':
     # for b in method:
     #     config['result_dir']=f'result/{b}'
     #     get_metrices(config)
+
+    config['result_dir']='result/PD-FGC'
+    get_metrices(config)

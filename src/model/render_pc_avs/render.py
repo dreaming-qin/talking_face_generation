@@ -6,8 +6,8 @@ if __name__=='__main__':
 
 import math
 import random
-from src.model.render2.base_network import BaseNetwork
-from src.model.render2.vision_network import ResNeXt50 as ImageEncoder
+from src.model.render_pc_avs.base_network import BaseNetwork
+from src.model.render_pc_avs.vision_network import ResNeXt50 as ImageEncoder
 from src.model.render.render import MappingNet 
 import torch
 from torch import nn
@@ -726,10 +726,10 @@ class ModulateGenerator(StyleGAN2Generator):
 if __name__=='__main__':
     import yaml
     from argparse import Namespace
-    from src.model.render2.vision_network import ResNeXt50 as ImageEncoder
+    from src.model.render_pc_avs.vision_network import ResNeXt50 as ImageEncoder
 
     # 指定 YAML 文件路径
-    yaml_file_path = 'test.yaml'
+    yaml_file_path = 'pc_avs.yaml'
     # 读取 YAML 文件并加载为字典
     with open(yaml_file_path, 'r') as file:
         yaml_data = yaml.safe_load(file)

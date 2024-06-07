@@ -92,7 +92,8 @@ def generate_video(config):
     render.eval()
 
     # 拿数据
-    file_list=sorted(glob.glob('{}/test/*/*.pkl'.format(config['format_output_path'])))
+    # file_list=sorted(glob.glob('{}/test/*/*.pkl'.format(config['format_output_path'])))
+    file_list=np.load('test_dataset_lrs3.npy')
     file_list=np.array(file_list)[:config['video_num']]
     print('生成视频中...')
     for file in tqdm(file_list):
@@ -113,6 +114,12 @@ def generate_video(config):
         input_img=real_video[0].expand(len(real_video),-1,-1,-1)
         # 获得驱动源(B,73,win size)
         driving_src=get_drving(data,config['render_win_size'])
+
+        # # test
+        # if 'FcoJt2KLC9k_50008' not in file:
+        #     continue
+        # input_img=real_video[44].expand(len(real_video),-1,-1,-1)
+
 
         # 送入render
         fake_video=[]

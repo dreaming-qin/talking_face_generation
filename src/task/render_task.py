@@ -98,7 +98,7 @@ def save_result(render,dataloader,save_dir,save_video_num):
         # [B,3,H,W]
         output_dict = render(input_image, driving_source)
     
-        # 输出为视频，顺序是（目标，源图片，warp，生成图片）
+        # 输出为视频，顺序是（源图片，目标，warp，生成图片）
         # [len,H,W,3]
         real_video=data['target'].permute(0,2,3,1)
         # [len,H,W,3]
@@ -107,7 +107,7 @@ def save_result(render,dataloader,save_dir,save_video_num):
         warp=output_dict['warp_image'].permute(0,2,3,1)
         fake=output_dict['fake_image'].permute(0,2,3,1)
         # [len,H,4*W,3]
-        video=torch.cat((real_video,img,warp,fake),dim=2)
+        video=torch.cat((img,real_video,warp,fake),dim=2)
         save_path=os.path.join(save_dir,'{}.mp4'.format(it))
         torchvision.io.write_video(save_path, ((video+1)/2*255).cpu(), fps=1)
     render.train()
@@ -172,6 +172,15 @@ def run(config):
         train_logger.info('render模块加载预训练模型{}'.format(config['render_pre_train']))
         state_dict=torch.load(config['render_pre_train'],map_location=torch.device('cpu'))
         render.load_state_dict(state_dict,strict=False)
+        # # test
+        # mapping_state_dict={}
+        # for key,val in state_dict.items():
+        #     mapping_state_dict[key.replace('module.mapping_net.','')]=val
+        # render.module.mapping_net.load_state_dict(mapping_state_dict,strict=False)
+        # warpping_state_dict={}
+        # for key,val in state_dict.items():
+        #     warpping_state_dict[key.replace('module.warpping_net.','')]=val
+        # render.module.warpping_net.load_state_dict(warpping_state_dict,strict=False)
 
     # 验证
     save_result(render,test_dataloader,os.path.join(config['result_dir'],'epoch_-1_warp'),save_video_num=10)

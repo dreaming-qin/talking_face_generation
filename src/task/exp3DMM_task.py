@@ -228,7 +228,7 @@ def run(config):
             # 反向传播
             optimizer.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(exp_model.parameters(), 0.5)
+            # torch.nn.utils.clip_grad_norm_(exp_model.parameters(), 0.5)
             optimizer.step()
             # print(f'训练用时间{time.time()-s}')
 
