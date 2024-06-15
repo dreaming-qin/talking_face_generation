@@ -68,7 +68,7 @@ def __process_video__(video_path,dataset_name):
 
     process_video,mouth_mask = get_face_image(driving_video,dataset_name)
 
-    # test，测试遮罩效果
+    # # test，测试遮罩效果
     # temp=[]
     # for i in range(mouth_mask.shape[0]):
     #     mask = np.random.rand(mouth_mask[i][1]-mouth_mask[i][0],mouth_mask[i][3]-mouth_mask[i][2], 3)
@@ -103,7 +103,7 @@ def get_face_image(driving_video,dataset_name):
 
     # 初始化gray list
     for i in range(len(video_array)):
-        if dataset_name == 'mead' or dataset_name=='improv':
+        if dataset_name == 'mead' or dataset_name=='improv' or dataset_name=='ravdess':
             gray = cv2.cvtColor(video_array[i], cv2.COLOR_BGR2GRAY)
             rects = detector(gray, 1)  #detect human face
             # # test
@@ -129,7 +129,7 @@ def get_face_image(driving_video,dataset_name):
         return np.zeros((len(video_array),256,256,3)),np.zeros((len(video_array),4))
     
     # 裁剪图片
-    if dataset_name == 'mead' or dataset_name=='improv':
+    if dataset_name == 'mead' or dataset_name=='improv' or dataset_name=='ravdess':
         temp_video_array=[]
         for pic in video_array:
             temp_video_array.append(pic[top:bottom,left:right])
