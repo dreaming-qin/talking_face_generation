@@ -217,14 +217,14 @@ if __name__ == '__main__':
     # id_M003_front_angry_level_1_030_pose_M019_front_sad_level_3_013_audio_M003_front_angry_level_3_011
     # id_M003_front_angry_level_1_030_pose_M003_front_angry_level_3_011_audio_M003_front_angry_level_3_011
     # 当前的输入文件为了省事，是面向已经处理好的pkl文件
-    # config['audio_file']='data_mead/format_data/train/0/M019_front_sad_level_3_013.pkl'
-    # config['img_file']='data_mead/format_data/train/26/M003_front_angry_level_3_011.pkl'
-    # config['pose_file']='data_mead/format_data/train/0/M019_front_sad_level_3_013.pkl'
+    config['audio_file']='data_mead/format_data/train/26/M003_front_angry_level_3_011.pkl'
+    config['img_file']='data_mead/format_data/train/28/W016_front_sad_level_2_015.pkl'
+    config['pose_file']='data_mead/format_data/test/0/M005_front_surprised_level_3_003.pkl'
 
 
-    config['audio_file']='data_mead/format_data/test/0/M022_front_neutral_level_1_022.pkl'
-    config['img_file']='data_mead/format_data/test/0/W014_front_neutral_level_1_023.pkl'
-    config['pose_file']='data_mead/format_data/test/0/M009_front_angry_level_2_022.pkl'
+    # config['audio_file']='data_mead/format_data/test/0/M022_front_neutral_level_1_022.pkl'
+    # config['img_file']='data_mead/format_data/test/0/W014_front_neutral_level_1_023.pkl'
+    # config['pose_file']='data_mead/format_data/test/0/M009_front_angry_level_2_022.pkl'
 
 
 

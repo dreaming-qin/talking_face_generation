@@ -3,7 +3,7 @@ voxceleb2_root_path: '/workspace/dataset/voxceleb/train'
 improv_root_path: '/workspace/dataset/improv'
 lrs3_root_path: '/workspace/dataset/lrs3'
 ravdess_root_path: '/workspace/dataset/RAVDESS'
-format_output_path: 'data_ravdess/format_data'
+format_output_path: 'data_mix/format_data'
 
 # # 数据预处理时，根据特定数据集选择特定方法处理，当前值只有'mead'和'vox'
 # type: 'vox'

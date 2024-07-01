@@ -3,10 +3,14 @@ mapping_net:
   descriptor_nc: 256
   layer: 3
 
+# warpping_net: 
+#   base_nc: 32
+#   decoder_layer: 3
+#   encoder_layer: 5
+
 warpping_net: 
-  base_nc: 32
-  decoder_layer: 3
-  encoder_layer: 5
+  img_channel: 3
+  drving_dim: 256
 
 editing_net:
   base_nc: 64
@@ -33,17 +37,17 @@ device_id: [0]
 # epoch
 epoch: 1000000
 # 在epoch的前warp_epoch中，会先不训练edit，然后会共同训练
-warp_epoch: 0
+warp_epoch: 30
 lr: 0.0001
 # 在lr_scheduler_step后改变学习率
-lr_scheduler_step: [40]
+lr_scheduler_step: [45]
 # render_win_size需要不小于12
 render_win_size: 13
 
 
 
 # 相关文件夹
-render_pre_train: "checkpoint/render/mix/加强情感控制/edit_epoch_27_metrices_0.8273365222346019.pth"
+# render_pre_train: "checkpoint/render/mix/加强情感控制/edit_epoch_27_metrices_0.8273365222346019.pth"
 # dis_pre_train: "checkpoint/render/epoch_54_metrices_0.7367087345975758_dis.pth"
 checkpoint_dir: "checkpoint/render"
 result_dir: "result/render"

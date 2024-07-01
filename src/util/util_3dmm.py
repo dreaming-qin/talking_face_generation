@@ -56,11 +56,13 @@ def get_lm_by_3dmm(id_3dmm,exp_3dmm):
 
     return landmark
 
-def get_face(id_3dmm,exp_3dmm):
-    r'''通过3dmm的身份和表情参数，获得人脸
+def get_face(id_3dmm,exp_3dmm,angle=None,translation=None):
+    r'''通过3dmm的身份和表情参数，获得旋转和平移为0的人脸
     参数：
         id_3dmm：(B，80)，tensor
         exp_3dmm：(B, 64)，tensor
+        angle(3)，tensor ，为None时将设置为0
+        translation(B, 3)，为None时将设置为0
     返回：
         face：(B,3,224,224)，tensor
     '''
@@ -70,15 +72,19 @@ def get_face(id_3dmm,exp_3dmm):
 
     face_shape = facemodel.compute_shape(id_3dmm, exp_3dmm)
     # 旋转和平移设置为0
-    rotation = facemodel.compute_rotation(torch.zeros(len(id_3dmm),3).to(device))
-    face_shape_transformed = facemodel.transform(face_shape, rotation,torch.zeros(len(id_3dmm),3).to(device))
+    if angle is None:
+        angle=torch.zeros(len(id_3dmm),3).to(device)
+    if translation is None:
+        translation = torch.zeros(len(id_3dmm),3).to(device)
+
+    rotation = facemodel.compute_rotation(angle)
+    face_shape_transformed = facemodel.transform(face_shape, rotation,translation)
     pred_vertex = facemodel.to_camera(face_shape_transformed)
 
     pred_color_copy=pred_color.expand(len(exp_3dmm),-1,-1).to(device)
     _, _, pred_face = render(pred_vertex, facemodel.face_buf, feat=pred_color_copy)
     
     return pred_face
-
 
 def save_face_video(id_3dmm,exp_3dmm,save_file,audio_file=None):
     '''通过3dmm的身份和表情参数，渲染人脸并保存
